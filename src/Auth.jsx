@@ -18,12 +18,10 @@ export default function Auth({ onLogin }) {
         const { error } = await supabase.auth.signUp({ 
           email, 
           password,
-          options: {
-            emailRedirectTo: window.location.origin
-          }
+          options: { emailRedirectTo: window.location.origin }
         })
         if (error) throw error
-        alert('E-mail de verificação enviado! Confira sua caixa de entrada.')
+        alert('E-mail de verificação enviado!')
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
@@ -35,18 +33,40 @@ export default function Auth({ onLogin }) {
     }
   }
 
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      })
+      if (error) throw error
+    } catch (err) {
+      setError('Erro ao conectar com Google')
+    }
+  }
+
   return (
     <div className="auth-immersive-container">
-      <div className="glow-sphere sphere-1"></div>
-      <div className="glow-sphere sphere-2"></div>
+      {/* Luzes removidas conforme solicitado */}
       
       <div className="auth-glass-card">
         <div className="auth-brand-area">
           <div className="brand-logo-container">
-            <img src="https://i.postimg.cc/bJ3nT0XN/logo-allcance.png" alt="Allcance Logo" className="brand-logo-main" />
+            <img src="/logo.png" alt="Allcance Logo" className="brand-logo-main" />
           </div>
           <h1 className="auth-title">AllcanceAI</h1>
           <p className="auth-subtitle">Entre na sua conta</p>
+        </div>
+
+        <button className="auth-google-btn" onClick={handleGoogleLogin}>
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
+          Continuar com Google
+        </button>
+
+        <div className="auth-divider">
+          <span>ou use seu e-mail</span>
         </div>
 
         <form onSubmit={handleAuth} className="auth-premium-form">
@@ -54,13 +74,7 @@ export default function Auth({ onLogin }) {
             <label>E-MAIL</label>
             <div className="input-wrapper">
               <svg className="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              <input 
-                type="email" 
-                placeholder="seu@email.com" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                required 
-              />
+              <input type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
           </div>
           
@@ -68,13 +82,7 @@ export default function Auth({ onLogin }) {
             <label>SENHA</label>
             <div className="input-wrapper">
               <svg className="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              <input 
-                type="password" 
-                placeholder="••••••••" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                required 
-              />
+              <input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
           </div>
 
@@ -99,10 +107,7 @@ export default function Auth({ onLogin }) {
           </p>
         </div>
       </div>
-
-      <footer className="auth-page-footer">
-        &copy; 2026 AllcanceAI.
-      </footer>
+      <footer className="auth-page-footer">&copy; 2026 AllcanceAI.</footer>
     </div>
   )
 }

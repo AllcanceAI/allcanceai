@@ -356,7 +356,7 @@ function App() {
         </div>
         <div className="sidebar-header">
           <div className="sidebar-brand">
-             <img src="https://i.postimg.cc/bJ3nT0XN/logo-allcance.png" alt="Logo" className="app-logo-small" />
+             <img src="/logo.png" alt="Logo" className="app-logo-small" />
              <span className="logo-text">AllcanceAI</span>
           </div>
           <button className="new-chat-btn" onClick={() => { setActiveTab('agente'); setCurrentChatId(null); setMessages([]); setSidebarOpen(false); }}><span>Novo Chat</span></button>
@@ -393,7 +393,7 @@ function App() {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
           <div className="mobile-brand">
-             <img src="https://i.postimg.cc/bJ3nT0XN/logo-allcance.png" alt="Logo" className="app-logo-small" />
+             <img src="/logo.png" alt="Logo" className="app-logo-small" />
              <span className="logo-text">AllcanceAI</span>
           </div>
           <div style={{ width: 40 }} />

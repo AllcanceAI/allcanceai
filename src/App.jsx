@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
+import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
+import { startQRLogin } from './services/telegramService'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -14,6 +16,10 @@ function App() {
   const [activeSettingView, setActiveSettingView] = useState('main')
   const [copied, setCopied] = useState(false)
   const [menuOpenId, setMenuOpenId] = useState(null)
+  const [telegramStep, setTelegramStep] = useState(1)
+  const [loginMethod, setLoginMethod] = useState('phone') 
+  const [qrCodeLink, setQrCodeLink] = useState('')
+  const [telegramStatus, setTelegramStatus] = useState('disconnected')
   
   const [tokenUsage, setTokenUsage] = useState({ 
     monthlyUsed: 0, 
@@ -22,6 +28,20 @@ function App() {
     plan: 'monthly' 
   })
   const [userPlan, setUserPlan] = useState('monthly')
+
+  // Inicia Login QR se o método mudar para QR
+  useEffect(() => {
+    if (loginMethod === 'qr' && !qrCodeLink) {
+      startQRLogin(
+        (link) => setQrCodeLink(link),
+        (session, user) => {
+          console.log("LOGIN SUCCESS!", user);
+          setTelegramStatus('connected');
+          // Aqui você salvaria a 'session' no Supabase para uso futuro
+        }
+      );
+    }
+  }, [loginMethod])
 
   const textareaRef = useRef(null)
   const messagesEndRef = useRef(null)
@@ -288,12 +308,88 @@ function App() {
       case 'telegram':
         return (
           <div className="tab-view">
-            <h2>Integração Telegram</h2>
-            <div className="settings-grid">
-              <div className="setting-main-card">
-                <div className="card-icon-container" style={{ color: '#0088cc' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></div>
-                <div className="card-text"><h3>Conectar Bot</h3><p>Receba notificações via Telegram</p></div>
-                <div className="card-arrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+            <div className="tab-header-flex">
+              <h2>Conectar Telegram</h2>
+              <span className={`status-badge-${telegramStatus}`}>
+                {telegramStatus === 'connected' ? 'Conectado' : 'Desconectado'}
+              </span>
+            </div>
+            
+            <div className="integration-container">
+              <div className="integration-card-main">
+                <div className="integration-info">
+                  <div className="platform-icon telegram"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></div>
+                  <div className="platform-text">
+                    <h3>Conta Pessoal (User API)</h3>
+                    <p>Conecte seu Telegram para gerenciar chats e automatizar respostas diretamente pelo AllcanceAI.</p>
+                  </div>
+                </div>
+
+                <div className="connection-form">
+                  {loginMethod === 'phone' ? (
+                    telegramStep === 1 ? (
+                      <>
+                        <div className="input-field-group">
+                          <label>Número de Telefone</label>
+                          <div className="input-wrapper-saas">
+                            <input type="text" placeholder="+55 11 99999-9999" />
+                          </div>
+                        </div>
+                        <button className="action-btn-primary" onClick={() => setTelegramStep(2)}>
+                          Enviar Código de Acesso
+                        </button>
+                        <div className="auth-divider-saas"><span>OU</span></div>
+                        <button className="secondary-option-btn" onClick={() => setLoginMethod('qr')}>
+                          Entrar via QR Code
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="input-field-group code-field animated-pulse">
+                          <label>Código de Verificação</label>
+                          <div className="input-wrapper-saas">
+                            <input type="text" placeholder="00000" />
+                          </div>
+                        </div>
+                        <button className="action-btn-primary">Verificar Código</button>
+                        <button className="back-link-btn" onClick={() => setTelegramStep(1)}>
+                          Alterar número de telefone
+                        </button>
+                      </>
+                    )
+                  ) : (
+                    <div className="qr-container-wrapper">
+                      <div className="qr-box">
+                        {qrCodeLink ? (
+                          <QRCodeCanvas value={qrCodeLink} size={180} />
+                        ) : (
+                          <div className="qr-placeholder">
+                             <div className="qr-scanning-line"></div>
+                             <p style={{ color: '#000', fontSize: '10px' }}>Gerando...</p>
+                          </div>
+                        )}
+                      </div>
+                      <p className="qr-hint">Abra o Telegram no seu celular e vá em <strong>Configurações > Dispositivos > Conectar Dispositivo</strong></p>
+                      <button className="back-link-btn" onClick={() => setLoginMethod('phone')}>
+                        Entrar com número de telefone
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="integration-guide">
+                <h4>Como funciona?</h4>
+                <ol>
+                  <li>Insira seu número de telefone com o código do país.</li>
+                  <li>Você receberá um código diretamente no seu aplicativo do Telegram.</li>
+                  <li>Insira o código aqui para validar a conexão.</li>
+                  <li>Pronto! Suas mensagens serão sincronizadas com o AllcanceAI.</li>
+                </ol>
+                <div className="guide-alert">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span>Seus dados são protegidos por criptografia de ponta a ponta.</span>
+                </div>
               </div>
             </div>
           </div>
@@ -347,44 +443,79 @@ function App() {
     <div className="layout">
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <button className="sidebar-close-btn" onClick={() => setSidebarOpen(false)}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <div className="usage-tracker">
-          <div className="usage-info"><span className="usage-label">{tokenUsage.plan === 'daily' ? 'Hoje' : 'Cota'}</span><span className="usage-value">{tokenUsage.periodUsed.toLocaleString()} <span className="usage-limit">/ {(periodLimit/1000).toFixed(0)}k</span></span></div>
-          <div className="progress-bg"><div className="progress-fill" style={{ width: `${usagePercent}%`, backgroundColor: getUsageColor() }} /></div>
-        </div>
-        <div className="sidebar-header">
+        <div className="sidebar-header-main">
           <div className="sidebar-brand">
-             <img src="/logo.png" alt="Logo" className="app-logo-small" />
+             <div className="brand-logo-container">
+               <img src="/logo.png" alt="Logo" className="brand-logo-main" />
+             </div>
              <span className="logo-text">AllcanceAI</span>
           </div>
-          <button className="new-chat-btn" onClick={() => { setActiveTab('agente'); setCurrentChatId(null); setMessages([]); setSidebarOpen(false); }}><span>Novo Chat</span></button>
-        </div>
-        <nav className="sidebar-nav">
-          <button className={`nav-link ${activeTab === 'histórico' ? 'active' : ''}`} onClick={() => { setActiveTab('histórico'); setSidebarOpen(false); }}>Histórico</button>
-          <button className={`nav-link ${activeTab === 'telegram' ? 'active' : ''}`} onClick={() => { setActiveTab('telegram'); setSidebarOpen(false); }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>Telegram
+          <button className="sidebar-collapse-btn" onClick={() => setSidebarOpen(false)}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
           </button>
-          <button className={`nav-link ${activeTab === 'arquivos' ? 'active' : ''}`} onClick={() => { setActiveTab('arquivos'); setSidebarOpen(false); }}>Arquivos</button>
-          <button className={`nav-link ${activeTab === 'instruções' ? 'active' : ''}`} onClick={() => { setActiveTab('instruções'); setSidebarOpen(false); }}>Instruções</button>
-        </nav>
-        <div className="sidebar-recent">
-          <p className="section-label">Recentes</p>
-          <div className="recent-list">
-            {sortedChats.slice(0, 3).map(chat => (
-              <div key={chat.id} className={`recent-item ${currentChatId === chat.id ? 'active' : ''}`}>
-                <span className="item-text" onClick={() => { setCurrentChatId(chat.id); setActiveTab('agente'); setSidebarOpen(false); }}>
-                  {chat.title} {chat.pinned && <svg className="discreet-pin" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 9V4l1 0c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1l1 0v5c0 1.66-1.34 3-3 3h0v2h5.97v7l1 1 1-1v-7H19v-2h0c-1.66 0-3-1.34-3-3z"/></svg>}
-                </span>
-                <div className="item-menu-trigger" onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === chat.id ? null : chat.id); }}>⋮</div>
-                {renderChatMenu(chat.id, chat.pinned)}
-              </div>
-            ))}
+        </div>
+
+        <div className="sidebar-search">
+          <div className="search-wrapper">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search..." />
           </div>
         </div>
-        <div className="sidebar-footer">
-          <button className={`nav-link ${activeTab === 'configurações' ? 'active' : ''}`} onClick={() => { setActiveTab('configurações'); setSidebarOpen(false); setActiveSettingView('main'); }}>Configurações</button>
+
+        <div className="sidebar-scroll-area">
+          <button className="new-chat-btn-norse" onClick={() => { setActiveTab('agente'); setCurrentChatId(null); setMessages([]); setSidebarOpen(false); }}>
+            <div className="plus-icon-orange">+</div>
+            <span>Novo Chat</span>
+          </button>
+
+          <div className="sidebar-section">
+            <p className="section-label-norse">Atividades</p>
+            <button className={`nav-link-norse ${activeTab === 'histórico' ? 'active' : ''}`} onClick={() => { setActiveTab('histórico'); setSidebarOpen(false); }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Histórico
+            </button>
+            <button className={`nav-link-norse ${activeTab === 'instruções' ? 'active' : ''}`} onClick={() => { setActiveTab('instruções'); setSidebarOpen(false); }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              Instruções
+            </button>
+          </div>
+
+          <div className="sidebar-divider"></div>
+
+          <div className="sidebar-section">
+            <p className="section-label-norse">Canais</p>
+            <button className={`nav-link-norse ${activeTab === 'arquivos' ? 'active' : ''}`} onClick={() => { setActiveTab('arquivos'); setSidebarOpen(false); }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              WhatsApp
+            </button>
+            <button className={`nav-link-norse ${activeTab === 'telegram' ? 'active' : ''}`} onClick={() => { setActiveTab('telegram'); setSidebarOpen(false); }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+              Telegram
+            </button>
+          </div>
+
+          <div className="sidebar-divider"></div>
+
+          <div className="sidebar-section">
+            <p className="section-label-norse">Recentes</p>
+            <div className="recent-list-norse">
+              {sortedChats.slice(0, 6).map(chat => (
+                <div key={chat.id} className={`recent-item-norse ${currentChatId === chat.id ? 'active' : ''}`} onClick={() => { setCurrentChatId(chat.id); setActiveTab('agente'); setSidebarOpen(false); }}>
+                  <span className="item-text-norse">{chat.title}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="sidebar-footer-norse">
+          <div className="usage-tracker-mini">
+            <div className="usage-progress-bar"><div className="usage-progress-fill" style={{ width: `${Math.min((tokenUsage.periodUsed / PLAN_LIMITS[tokenUsage.plan]) * 100, 100)}%` }} /></div>
+          </div>
+          <button className={`nav-link-norse ${activeTab === 'configurações' ? 'active' : ''}`} onClick={() => { setActiveTab('configurações'); setSidebarOpen(false); setActiveSettingView('main'); }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Configurações
+          </button>
         </div>
       </aside>
       <main className="main-content">

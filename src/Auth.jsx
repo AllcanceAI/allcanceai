@@ -57,7 +57,7 @@ export default function Auth({ onLogin }) {
             <img src="/logo.png" alt="Allcance Logo" className="brand-logo-main" />
           </div>
           <h1 className="auth-title">AllcanceAI</h1>
-          <p className="auth-subtitle">Entre na sua conta</p>
+          <p className="auth-subtitle">{isSignUp ? 'Crie sua conta agora' : 'Entre na sua conta'}</p>
         </div>
 
         <button className="auth-google-btn" onClick={handleGoogleLogin}>

@@ -20,44 +20,50 @@ const RightSidebar = ({ activeChat }) => {
 
   return (
     <div className="crm-sidebar-container">
-      <div className="crm-tabs-header">
-        {['Etiquetas', 'Agendamentos', 'Arquivados', 'Assinantes'].map(tab => (
-          <button 
-            key={tab} 
-            className={`crm-tab-btn ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="crm-tabs-scroll-container">
+        <div className="crm-tabs-header">
+          {['Etiquetas', 'Agendamentos', 'Arquivados', 'Assinantes'].map(tab => (
+            <button 
+              key={tab} 
+              className={`crm-tab-btn ${activeTab === tab ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="crm-tab-content">
         {activeTab === 'Etiquetas' && (
           <div className="tab-pane">
             <div className="crm-section-title">Gerenciar Etiquetas</div>
-            <div className="tag-creation-box" style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem' }}>
-              <input 
-                type="text" 
-                placeholder="Nova etiqueta" 
-                value={newTagName}
-                onChange={e => setNewTagName(e.target.value)}
-                style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
-              />
-              <input 
-                type="color" 
-                value={newTagColor}
-                onChange={e => setNewTagColor(e.target.value)}
-                style={{ width: '32px', height: '32px', border: 'none', background: 'none', cursor: 'pointer' }}
-              />
-              <button onClick={addTag} style={{ background: '#333', border: 'none', color: '#fff', borderRadius: '8px', padding: '0 0.75rem', cursor: 'pointer' }}>+</button>
+            
+            <div className="tag-creation-card">
+              <div className="tag-input-group">
+                <input 
+                  type="text" 
+                  placeholder="Nome da etiqueta..." 
+                  value={newTagName}
+                  onChange={e => setNewTagName(e.target.value)}
+                />
+                <div className="color-picker-wrapper">
+                  <input 
+                    type="color" 
+                    value={newTagColor}
+                    onChange={e => setNewTagColor(e.target.value)}
+                  />
+                </div>
+              </div>
+              <button className="tag-add-confirm" onClick={addTag}>Criar Etiqueta</button>
             </div>
+
             <div className="tag-list">
               {tags.map(tag => (
-                <div key={tag.id} className="tag-item">
-                  <div className="tag-color-dot" style={{ backgroundColor: tag.color }}></div>
+                <div key={tag.id} className="tag-card" style={{ borderColor: `${tag.color}44` }}>
+                  <div className="tag-color-dot" style={{ backgroundColor: tag.color, boxShadow: `0 0 10px ${tag.color}66` }}></div>
                   <span className="tag-name">{tag.name}</span>
-                  <button onClick={() => removeTag(tag.id)} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '1rem' }}>×</button>
+                  <button className="tag-remove-btn" onClick={() => removeTag(tag.id)}>×</button>
                 </div>
               ))}
             </div>

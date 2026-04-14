@@ -187,28 +187,59 @@
   z-index: 0;
 }
 
-/* Modais */
-.crm-modal-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.85);
-  backdrop-filter: blur(8px);
+/* Modais Enhanced */
+.crm-modal-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  z-index: 3000;
-  padding: 2rem;
+  margin-bottom: 1.5rem;
+}
+.crm-modal-header h3 { font-size: 1.1rem; color: #fff; margin: 0; }
+.crm-modal-close { background: none; border: none; color: #555; font-size: 1.5rem; cursor: pointer; transition: color 0.2s; }
+.crm-modal-close:hover { color: #fff; }
+
+.crm-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
 }
 
-.crm-modal-card {
-  background: #111;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 24px;
-  width: 100%;
-  max-width: 440px;
-  padding: 2rem;
-  position: relative;
+.crm-btn-primary, .crm-btn-secondary {
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
 }
+.crm-btn-primary { color: #fff; }
+.crm-btn-primary:hover { opacity: 0.9; transform: translateY(-2px); }
+.crm-btn-secondary { background: rgba(255,255,255,0.05); color: #888; border: 1px solid rgba(255,255,255,0.05); }
+.crm-btn-secondary:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+.crm-modal-body p {
+  color: #888;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.color-swatch {
+  height: 40px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+.color-swatch:hover { transform: scale(1.1); }
+.color-swatch.active { border-color: #fff; box-shadow: 0 0 15px rgba(255,255,255,0.3); }
 
 /* Gateway Grid */
 .gateway-grid {

@@ -120,3 +120,46 @@ export const sendTelegramMessage = async (entity, text) => {
   if (!telegramClient) throw new Error('Client not initialized');
   await telegramClient.sendMessage(entity, { message: text });
 };
+
+// Baixa mídia de uma mensagem e retorna blob URL para exibição
+export const downloadMediaAsUrl = async (msg) => {
+  const telegramClient = getTelegramClient();
+  if (!telegramClient || !msg?.media) return null;
+  try {
+    const buffer = await telegramClient.downloadMedia(msg, { progressCallback: null });
+    if (!buffer) return null;
+    // Detecta tipo de mídia para o MIME correto
+    const isPhoto = msg.media?.className === 'MessageMediaPhoto';
+    const mime = isPhoto ? 'image/jpeg' : 'application/octet-stream';
+    const blob = new Blob([buffer], { type: mime });
+    return URL.createObjectURL(blob);
+  } catch (e) {
+    console.error('Media download failed:', e);
+    return null;
+  }
+};
+
+// Cache de fotos de perfil (em memória durante a sessão)
+const profilePhotoCache = {};
+
+export const getProfilePhotoUrl = async (entity) => {
+  const key = entity?.id?.toString?.();
+  if (!key) return null;
+  if (key in profilePhotoCache) return profilePhotoCache[key];
+
+  try {
+    const telegramClient = getTelegramClient();
+    if (!telegramClient) return null;
+    const buf = await telegramClient.downloadProfilePhoto(entity);
+    if (!buf?.length) {
+      profilePhotoCache[key] = null;
+      return null;
+    }
+    const url = URL.createObjectURL(new Blob([buf], { type: 'image/jpeg' }));
+    profilePhotoCache[key] = url;
+    return url;
+  } catch {
+    profilePhotoCache[key] = null;
+    return null;
+  }
+};

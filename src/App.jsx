@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
-import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode, getDialogs, getChatMessages, sendTelegramMessage } from './services/telegramService'
+import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode, getDialogs, getChatMessages, sendTelegramMessage, downloadMediaAsUrl, getProfilePhotoUrl } from './services/telegramService'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -31,6 +31,9 @@ function App() {
   const [tgMessages, setTgMessages] = useState([])
   const [tgInput, setTgInput] = useState('')
   const [tgLoadingChats, setTgLoadingChats] = useState(false)
+  const [tgMobileView, setTgMobileView] = useState('list') // 'list' | 'chat'
+  const [tgAvatarUrls, setTgAvatarUrls] = useState({}) // { id: url }
+  const [tgMediaUrls, setTgMediaUrls] = useState({}) // { msgId: url }
   const tgMessagesEndRef = useRef(null)
   
   const [tokenUsage, setTokenUsage] = useState({ 
@@ -73,9 +76,17 @@ function App() {
   useEffect(() => {
     if (telegramStatus === 'connected') {
       setTgLoadingChats(true)
-      getDialogs(30).then(dialogs => {
+      getDialogs(30).then(async (dialogs) => {
         setTgDialogs(dialogs)
         setTgLoadingChats(false)
+        // Carrega fotos de perfil de forma lazy (sem bloquear a lista)
+        dialogs.forEach(async (dialog) => {
+          if (!dialog.entity) return
+          const url = await getProfilePhotoUrl(dialog.entity)
+          if (url) {
+            setTgAvatarUrls(prev => ({ ...prev, [dialog.entity.id?.toString()]: url }))
+          }
+        })
       }).catch(() => setTgLoadingChats(false))
     }
   }, [telegramStatus])
@@ -338,59 +349,60 @@ function App() {
                     {renderChatMenu(chat.id, chat.pinned)}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )
       case 'telegram':
         return telegramStatus === 'connected' ? (
-          <div className="tg-interface">
+          <div className={`tg-interface${tgMobileView === 'chat' ? ' mobile-chat-active' : ''}`}>
             {/* Painel esquerdo: lista de chats */}
             <div className="tg-sidebar-panel">
               <div className="tg-panel-header">
                 <div className="tg-user-badge">
-                  <div className="tg-avatar-sm">
-                    {telegramUser?.firstName?.[0] || 'T'}
-                  </div>
+                  <div className="tg-avatar-sm">{telegramUser?.firstName?.[0] || 'T'}</div>
                   <span>{telegramUser?.firstName || 'Telegram'}</span>
                 </div>
                 <button className="tg-disconnect-btn" onClick={() => {
                   import('./services/telegramService').then(m => m.clearSession());
-                  setTelegramStatus('disconnected');
-                  setTgDialogs([]);
-                  setSelectedTgChat(null);
+                  setTelegramStatus('disconnected'); setTgDialogs([]); setSelectedTgChat(null);
                 }}>Desconectar</button>
               </div>
               <div className="tg-chat-list">
                 {tgLoadingChats ? (
                   <div className="tg-loading"><div className="pro-spinner"></div></div>
-                ) : tgDialogs.map((dialog, i) => (
-                  <div
-                    key={i}
-                    className={`tg-chat-item ${selectedTgChat === dialog ? 'active' : ''}`}
-                    onClick={async () => {
-                      setSelectedTgChat(dialog);
-                      setTgMessages([]);
-                      const msgs = await getChatMessages(dialog.entity, 50);
-                      setTgMessages(msgs);
-                      setTimeout(() => tgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-                    }}
-                  >
-                    <div className="tg-avatar">{(dialog.name || '?')[0]}</div>
-                    <div className="tg-chat-info">
-                      <div className="tg-chat-row">
-                        <span className="tg-chat-name">{dialog.name || 'Sem nome'}</span>
-                        <span className="tg-chat-time">
-                          {dialog.message?.date ? new Date(dialog.message.date * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
-                        </span>
-                      </div>
-                      <div className="tg-chat-row">
-                        <span className="tg-last-msg">{dialog.message?.message?.slice(0, 35) || '📎 Mídia'}</span>
-                        {dialog.unreadCount > 0 && <span className="tg-unread-badge">{dialog.unreadCount}</span>}
+                ) : tgDialogs.map((dialog, i) => {
+                  const avatarUrl = tgAvatarUrls[dialog.entity?.id?.toString()];
+                  return (
+                    <div key={i}
+                      className={`tg-chat-item ${selectedTgChat === dialog ? 'active' : ''}`}
+                      onClick={async () => {
+                        setSelectedTgChat(dialog);
+                        setTgMobileView('chat');
+                        setTgMessages([]);
+                        const msgs = await getChatMessages(dialog.entity, 50);
+                        setTgMessages(msgs);
+                        setTimeout(() => tgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                      }}
+                    >
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="" className="tg-avatar tg-avatar-photo" />
+                      ) : (
+                        <div className="tg-avatar">{(dialog.name || '?')[0]}</div>
+                      )}
+                      <div className="tg-chat-info">
+                        <div className="tg-chat-row">
+                          <span className="tg-chat-name">{dialog.name || 'Sem nome'}</span>
+                          <span className="tg-chat-time">
+                            {dialog.message?.date ? new Date(dialog.message.date * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                          </span>
+                        </div>
+                        <div className="tg-chat-row">
+                          <span className="tg-last-msg">
+                            {dialog.message?.message?.slice(0, 35) || (dialog.message?.media ? '📎 Mídia' : '')}
+                          </span>
+                          {dialog.unreadCount > 0 && <span className="tg-unread-badge">{dialog.unreadCount}</span>}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -399,34 +411,57 @@ function App() {
               {selectedTgChat ? (
                 <>
                   <div className="tg-chat-header">
-                    <div className="tg-avatar">{(selectedTgChat.name || '?')[0]}</div>
-                    <div>
-                      <p className="tg-chat-name">{selectedTgChat.name}</p>
-                    </div>
+                    <button className="tg-back-btn" onClick={() => setTgMobileView('list')}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    {tgAvatarUrls[selectedTgChat.entity?.id?.toString()] ? (
+                      <img src={tgAvatarUrls[selectedTgChat.entity?.id?.toString()]} alt="" className="tg-avatar tg-avatar-photo" />
+                    ) : (
+                      <div className="tg-avatar">{(selectedTgChat.name || '?')[0]}</div>
+                    )}
+                    <p className="tg-chat-name">{selectedTgChat.name}</p>
                   </div>
                   <div className="tg-messages-area">
-                    {tgMessages.map((msg, i) => (
-                      msg.message ? (
+                    {tgMessages.map((msg, i) => {
+                      const hasText = !!msg.message;
+                      const hasMedia = !!msg.media;
+                      const mediaClass = msg.media?.className;
+                      const isPhoto = mediaClass === 'MessageMediaPhoto';
+                      const isVideo = mediaClass === 'MessageMediaDocument' && msg.media?.document?.mimeType?.startsWith?.('video');
+                      const msgId = msg.id?.toString();
+                      const mediaUrl = tgMediaUrls[msgId];
+                      if (!hasText && !hasMedia) return null;
+                      return (
                         <div key={i} className={`tg-bubble ${msg.out ? 'out' : 'in'}`}>
-                          <p>{msg.message}</p>
+                          {hasText && <p>{msg.message}</p>}
+                          {hasMedia && !mediaUrl && (
+                            <button className="tg-media-load-btn" onClick={async () => {
+                              const url = await downloadMediaAsUrl(msg);
+                              if (url) setTgMediaUrls(prev => ({ ...prev, [msgId]: url }));
+                            }}>
+                              {isPhoto ? '📷 Toque para ver a foto' : isVideo ? '🎥 Toque para ver o vídeo' : '📎 Baixar arquivo'}
+                            </button>
+                          )}
+                          {hasMedia && mediaUrl && isPhoto && (
+                            <img src={mediaUrl} alt="foto" className="tg-media-img" onClick={() => window.open(mediaUrl, '_blank')} />
+                          )}
+                          {hasMedia && mediaUrl && !isPhoto && (
+                            <a href={mediaUrl} download className="tg-media-load-btn">📥 Baixar arquivo</a>
+                          )}
                           <span className="tg-bubble-time">
                             {new Date(msg.date * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                      ) : null
-                    ))}
+                      );
+                    })}
                     <div ref={tgMessagesEndRef} />
                   </div>
                   <div className="tg-input-bar">
-                    <input
-                      className="tg-input"
-                      placeholder="Digite uma mensagem..."
-                      value={tgInput}
+                    <input className="tg-input" placeholder="Digite uma mensagem..." value={tgInput}
                       onChange={(e) => setTgInput(e.target.value)}
                       onKeyDown={async (e) => {
                         if (e.key === 'Enter' && tgInput.trim()) {
-                          const text = tgInput;
-                          setTgInput('');
+                          const text = tgInput; setTgInput('');
                           await sendTelegramMessage(selectedTgChat.entity, text);
                           const msgs = await getChatMessages(selectedTgChat.entity, 50);
                           setTgMessages(msgs);
@@ -436,8 +471,7 @@ function App() {
                     />
                     <button className="tg-send-btn" onClick={async () => {
                       if (!tgInput.trim()) return;
-                      const text = tgInput;
-                      setTgInput('');
+                      const text = tgInput; setTgInput('');
                       await sendTelegramMessage(selectedTgChat.entity, text);
                       const msgs = await getChatMessages(selectedTgChat.entity, 50);
                       setTgMessages(msgs);

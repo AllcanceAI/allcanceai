@@ -11,6 +11,22 @@
   padding: 0;
 }
 
+/* Custom Thin & Black Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #111;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #222;
+}
+
 :root {
   --bg-dark: #000000;
   --glass-bg: rgba(15, 15, 15, 0.2);

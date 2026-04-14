@@ -75,3 +75,25 @@ export const startQRLogin = async (onQRGenerated, onLoginSuccess) => {
     console.error('Failed to start Telegram QR Login:', err);
   }
 };
+
+// Envia o código de verificação via Telegram (SMS ou app)
+export const sendPhoneCode = async (phoneNumber) => {
+  const telegramClient = getTelegramClient(getSavedSession());
+  if (!telegramClient) throw new Error('Client not initialized');
+  await telegramClient.connect();
+  const result = await telegramClient.sendCode({ apiId, apiHash }, phoneNumber);
+  return result.phoneCodeHash;
+};
+
+// Verifica o código e completa o login
+export const verifyPhoneCode = async (phoneNumber, phoneCodeHash, code, onSuccess) => {
+  const telegramClient = getTelegramClient();
+  if (!telegramClient) throw new Error('Client not initialized');
+  const user = await telegramClient.signIn(
+    { apiId, apiHash },
+    { phoneNumber, phoneCodeHash, phoneCode: code }
+  );
+  const sessionString = telegramClient.session.save();
+  localStorage.setItem(SESSION_KEY, sessionString);
+  onSuccess(sessionString, user);
+};

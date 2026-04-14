@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
-import { startQRLogin, getSavedSession } from './services/telegramService'
+import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode } from './services/telegramService'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -21,6 +21,11 @@ function App() {
   const [qrCodeLink, setQrCodeLink] = useState('')
   const [telegramStatus, setTelegramStatus] = useState('disconnected')
   const [telegramUser, setTelegramUser] = useState(null)
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [verificationCode, setVerificationCode] = useState('')
+  const [phoneCodeHash, setPhoneCodeHash] = useState('')
+  const [telegramLoading, setTelegramLoading] = useState(false)
+  const [telegramError, setTelegramError] = useState('')
   
   const [tokenUsage, setTokenUsage] = useState({ 
     monthlyUsed: 0, 
@@ -347,11 +352,34 @@ function App() {
                         <div className="input-field-group">
                           <label>Número de Telefone</label>
                           <div className="input-wrapper-saas">
-                            <input type="text" placeholder="+55 11 99999-9999" />
+                            <input
+                              type="tel"
+                              placeholder="+55 11 99999-9999"
+                              value={phoneNumber}
+                              onChange={(e) => setPhoneNumber(e.target.value)}
+                            />
                           </div>
                         </div>
-                        <button className="action-btn-primary" onClick={() => setTelegramStep(2)}>
-                          Enviar Código de Acesso
+                        {telegramError && <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.5rem' }}>{telegramError}</p>}
+                        <button
+                          className="action-btn-primary"
+                          disabled={telegramLoading || !phoneNumber}
+                          onClick={async () => {
+                            setTelegramLoading(true);
+                            setTelegramError('');
+                            try {
+                              const hash = await sendPhoneCode(phoneNumber);
+                              setPhoneCodeHash(hash);
+                              setVerificationCode('');
+                              setTelegramStep(2);
+                            } catch (e) {
+                              setTelegramError('Erro ao enviar o código. Verifique o número.');
+                            } finally {
+                              setTelegramLoading(false);
+                            }
+                          }}
+                        >
+                          {telegramLoading ? 'Enviando...' : 'Enviar Código de Acesso'}
                         </button>
                         <div className="auth-divider-saas"><span>OU</span></div>
                         <button className="secondary-option-btn" onClick={() => setLoginMethod('qr')}>
@@ -360,14 +388,41 @@ function App() {
                       </>
                     ) : (
                       <>
-                        <div className="input-field-group code-field animated-pulse">
+                        <div className="input-field-group code-field">
                           <label>Código de Verificação</label>
                           <div className="input-wrapper-saas">
-                            <input type="text" placeholder="00000" />
+                            <input
+                              type="text"
+                              placeholder="00000"
+                              value={verificationCode}
+                              onChange={(e) => setVerificationCode(e.target.value)}
+                              autoFocus
+                            />
                           </div>
+                          <p className="input-hint">Código enviado para {phoneNumber}</p>
                         </div>
-                        <button className="action-btn-primary">Verificar Código</button>
-                        <button className="back-link-btn" onClick={() => setTelegramStep(1)}>
+                        {telegramError && <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.5rem' }}>{telegramError}</p>}
+                        <button
+                          className="action-btn-primary"
+                          disabled={telegramLoading || !verificationCode}
+                          onClick={async () => {
+                            setTelegramLoading(true);
+                            setTelegramError('');
+                            try {
+                              await verifyPhoneCode(phoneNumber, phoneCodeHash, verificationCode, (_, me) => {
+                                setTelegramStatus('connected');
+                                setTelegramUser(me);
+                              });
+                            } catch (e) {
+                              setTelegramError('Código inválido. Tente novamente.');
+                            } finally {
+                              setTelegramLoading(false);
+                            }
+                          }}
+                        >
+                          {telegramLoading ? 'Verificando...' : 'Verificar Código'}
+                        </button>
+                        <button className="back-link-btn" onClick={() => { setTelegramStep(1); setTelegramError(''); }}>
                           Alterar número de telefone
                         </button>
                       </>

@@ -11,20 +11,25 @@
   padding: 0;
 }
 
-/* Custom Thin & Black Scrollbar */
+/* Custom Thin & Black Scrollbar - Universal */
+* {
+  scrollbar-width: thin !important;
+  scrollbar-color: #111 transparent !important;
+}
+
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 5px !important;
+  height: 5px !important;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: transparent !important;
 }
 ::-webkit-scrollbar-thumb {
-  background: #111;
-  border-radius: 10px;
+  background: #111 !important;
+  border-radius: 10px !important;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #222;
+  background: #222 !important;
 }
 
 :root {
@@ -269,12 +274,17 @@ body, html, #root {
 }
 
 .layout.hide-sidebar .sidebar {
-  display: none;
+  display: none !important;
+  width: 0 !important;
+  visibility: hidden !important;
 }
+
 .layout.hide-sidebar .main-content {
-  width: 100vw;
-  max-width: 100vw;
-  margin: 0;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  flex: 1 !important;
 }
 
 .tg-return-btn:hover {

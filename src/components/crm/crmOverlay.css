@@ -12,10 +12,10 @@
 }
 
 @media (max-width: 1200px) {
-  .crm-sidebar-container { width: 380px; min-width: 380px; }
+  .crm-sidebar-container { width: 380px !important; min-width: 380px !important; }
 }
-@media (max-width: 1023px) {
-  .crm-sidebar-container { display: none; }
+@media (max-width: 767px) {
+  .crm-sidebar-container { display: none !important; }
 }
 
 .crm-tabs-selector-area {

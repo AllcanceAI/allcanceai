@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
-import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode, getDialogs, getChatMessages, sendTelegramMessage, downloadMediaAsUrl, getProfilePhotoUrl } from './services/telegramService'
+import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode, getDialogs, getChatMessages, sendTelegramMessage, downloadMediaAsUrl, getProfilePhotoUrl, markChatAsRead } from './services/telegramService'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -380,6 +380,10 @@ function App() {
                         setSelectedTgChat(dialog);
                         setTgMobileView('chat');
                         setTgMessages([]);
+                        // Marca como lido no Telegram e zera o badge localmente
+                        markChatAsRead(dialog.entity);
+                        setTgDialogs(prev => prev.map(d => d.id === dialog.id ? { ...d, unreadCount: 0 } : d));
+                        
                         const msgs = await getChatMessages(dialog.entity, 50);
                         setTgMessages(msgs);
                         setTimeout(() => tgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);

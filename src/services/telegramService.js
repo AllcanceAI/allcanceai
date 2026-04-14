@@ -163,3 +163,14 @@ export const getProfilePhotoUrl = async (entity) => {
     return null;
   }
 };
+
+// Marca mensagens como lidas
+export const markChatAsRead = async (entity) => {
+  const telegramClient = getTelegramClient();
+  if (!telegramClient || !entity) return;
+  try {
+    await telegramClient.readHistory(entity);
+  } catch (e) {
+    console.error('Failed to mark as read:', e);
+  }
+};

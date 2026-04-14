@@ -369,6 +369,9 @@ function App() {
             {/* Painel esquerdo: lista de chats */}
             <div className="tg-sidebar-panel">
               <div className="tg-panel-header">
+                <button className="tg-return-btn" onClick={() => setActiveTab('agente')} style={{ marginRight: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '0.4rem 0.8rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                   ← Retornar
+                </button>
                 <div className="tg-user-badge">
                   <div className="tg-avatar-sm">{telegramUser?.firstName?.[0] || 'T'}</div>
                   <span>{telegramUser?.firstName || 'Telegram'}</span>
@@ -702,7 +705,7 @@ function App() {
   const getUsageColor = () => { if (usagePercent > 85) return '#ef4444'; if (usagePercent > 60) return '#f59e0b'; return '#10b981'; }
 
   return (
-    <div className="layout">
+    <div className={`layout ${activeTab === 'telegram' ? 'hide-sidebar' : ''}`}>
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header-main">

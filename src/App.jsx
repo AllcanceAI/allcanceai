@@ -3,6 +3,10 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode, getDialogs, getChatMessages, sendTelegramMessage, downloadMediaAsUrl, getProfilePhotoUrl, markChatAsRead } from './services/telegramService'
+import { useCRM } from './components/crm/CRMContext'
+import RightSidebar from './components/crm/RightSidebar'
+import { CrmMenu } from './components/crm/CrmMenu'
+import './components/crm/crmOverlay.css'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -13,6 +17,12 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeTab, setActiveTab ] = useState('agente')
   const [activeInstruction, setActiveInstruction] = useState(null)
+  
+  // CRM States
+  const { archivedIds, tags, contactTags } = useCRM();
+  const [selectedFilterTag, setSelectedFilterTag] = useState('all');
+  const [crmMenu, setCrmMenu] = useState({ x: 0, y: 0, visible: false, contactId: null, entity: null });
+  
   const [activeSettingView, setActiveSettingView] = useState('main')
   const [copied, setCopied] = useState(false)
   const [menuOpenId, setMenuOpenId] = useState(null)
@@ -363,53 +373,84 @@ function App() {
                   <div className="tg-avatar-sm">{telegramUser?.firstName?.[0] || 'T'}</div>
                   <span>{telegramUser?.firstName || 'Telegram'}</span>
                 </div>
+                <div className="tg-filter-area" style={{ marginLeft: 'auto', marginRight: '0.5rem' }}>
+                   <select 
+                     value={selectedFilterTag} 
+                     onChange={(e) => setSelectedFilterTag(e.target.value)}
+                     style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px', fontSize: '0.7rem', padding: '0.2rem' }}
+                   >
+                     <option value="all">Todas</option>
+                     {tags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                   </select>
+                </div>
                 <button className="tg-disconnect-btn" onClick={() => {
                   import('./services/telegramService').then(m => m.clearSession());
                   setTelegramStatus('disconnected'); setTgDialogs([]); setSelectedTgChat(null);
-                }}>Desconectar</button>
+                }}>Sair</button>
               </div>
               <div className="tg-chat-list">
                 {tgLoadingChats ? (
                   <div className="tg-loading"><div className="pro-spinner"></div></div>
-                ) : tgDialogs.map((dialog, i) => {
-                  const avatarUrl = tgAvatarUrls[dialog.entity?.id?.toString()];
-                  return (
-                    <div key={i}
-                      className={`tg-chat-item ${selectedTgChat === dialog ? 'active' : ''}`}
-                      onClick={async () => {
-                        setSelectedTgChat(dialog);
-                        setTgMobileView('chat');
-                        setTgMessages([]);
-                        // Marca como lido no Telegram e zera o badge localmente
-                        markChatAsRead(dialog.entity);
-                        setTgDialogs(prev => prev.map(d => d.id === dialog.id ? { ...d, unreadCount: 0 } : d));
-                        
-                        const msgs = await getChatMessages(dialog.entity, 50);
-                        setTgMessages(msgs);
-                        setTimeout(() => tgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-                      }}
-                    >
-                      {avatarUrl ? (
-                        <img src={avatarUrl} alt="" className="tg-avatar tg-avatar-photo" />
-                      ) : (
-                        <div className="tg-avatar">{(dialog.name || '?')[0]}</div>
-                      )}
-                      <div className="tg-chat-info">
-                        <div className="tg-chat-row">
-                          <span className="tg-chat-name">{dialog.name || 'Sem nome'}</span>
-                          <span className="tg-chat-time">
-                            {dialog.message?.date ? new Date(dialog.message.date * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
-                          </span>
-                        </div>
-                        <div className="tg-chat-row">
-                          <span className="tg-last-msg">
-                            {dialog.message?.message?.slice(0, 35) || (dialog.message?.media ? '📎 Mídia' : '')}
-                          </span>
-                          {dialog.unreadCount > 0 && <span className="tg-unread-badge">{dialog.unreadCount}</span>}
+                ) : tgDialogs
+                  .filter(d => !archivedIds.includes(d.id?.toString()))
+                  .filter(d => selectedFilterTag === 'all' || (contactTags[d.id?.toString()] || []).includes(selectedFilterTag))
+                  .map((dialog, i) => {
+                    const contactId = dialog.id?.toString();
+                    const avatarUrl = tgAvatarUrls[contactId];
+                    const activeTags = contactTags[contactId] || [];
+                    const lastTagId = activeTags[activeTags.length - 1];
+                    const lastTag = tags.find(t => t.id === lastTagId);
+
+                    return (
+                      <div key={i}
+                        className={`tg-chat-item ${selectedTgChat === dialog ? 'active' : ''} ${lastTag ? 'has-tag' : ''}`}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setCrmMenu({ x: e.pageX, y: e.pageY, visible: true, contactId, entity: dialog.entity });
+                        }}
+                        onClick={async () => {
+                          setSelectedTgChat(dialog);
+                          setTgMobileView('chat');
+                          setTgMessages([]);
+                          markChatAsRead(dialog.entity);
+                          setTgDialogs(prev => prev.map(d => d.id === dialog.id ? { ...d, unreadCount: 0 } : d));
+                          const msgs = await getChatMessages(dialog.entity, 50);
+                          setTgMessages(msgs);
+                          setTimeout(() => tgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                        }}
+                      >
+                        {lastTag && (
+                          <div className="tag-gradient-overlay" style={{ background: `linear-gradient(to left, ${lastTag.color}33, transparent)` }}></div>
+                        )}
+                        <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', width: '100%' }}>
+                          {avatarUrl ? (
+                            <img src={avatarUrl} alt="" className="tg-avatar tg-avatar-photo" />
+                          ) : (
+                            <div className="tg-avatar">{(dialog.name || '?')[0]}</div>
+                          )}
+                          <div className="tg-chat-info">
+                            <div className="tg-chat-row">
+                              <span className="tg-chat-name">{dialog.name || 'Sem nome'}</span>
+                              <span className="tg-chat-time">
+                                {dialog.message?.date ? new Date(dialog.message.date * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                              </span>
+                            </div>
+                            <div className="tg-chat-row">
+                              <span className="tg-last-msg">
+                                {dialog.message?.message?.slice(0, 35) || (dialog.message?.media ? '📎 Mídia' : '')}
+                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                {dialog.unreadCount > 0 && <span className="tg-unread-badge">{dialog.unreadCount}</span>}
+                                <div className="tg-item-more" onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCrmMenu({ x: e.pageX, y: e.pageY, visible: true, contactId, entity: dialog.entity });
+                                }}>⋮</div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
+                    );
                 })}
               </div>
             </div>
@@ -428,6 +469,11 @@ function App() {
                       <div className="tg-avatar">{(selectedTgChat.name || '?')[0]}</div>
                     )}
                     <p className="tg-chat-name">{selectedTgChat.name}</p>
+                    <div 
+                      className="tg-item-more" 
+                      style={{ marginLeft: 'auto', padding: '0.5rem', cursor: 'pointer' }}
+                      onClick={(e) => setCrmMenu({ x: e.pageX, y: e.pageY, visible: true, contactId: selectedTgChat.id?.toString(), entity: selectedTgChat.entity })}
+                    >⋮</div>
                   </div>
                   <div className="tg-messages-area">
                     {tgMessages.map((msg, i) => {
@@ -505,6 +551,22 @@ function App() {
                 </div>
               )}
             </div>
+            
+            {/* Painel lateral de CRM */}
+            <RightSidebar activeChat={selectedTgChat} />
+
+            {/* Menu de Contexto CRM */}
+            {crmMenu.visible && (
+              <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1999 }} onClick={() => setCrmMenu({ ...crmMenu, visible: false })}>
+                <CrmMenu 
+                  x={crmMenu.x} 
+                  y={crmMenu.y} 
+                  contactId={crmMenu.contactId} 
+                  entity={crmMenu.entity}
+                  onClose={() => setCrmMenu({ ...crmMenu, visible: false })} 
+                />
+              </div>
+            )}
           </div>
         ) : (
           <div className="tab-view">

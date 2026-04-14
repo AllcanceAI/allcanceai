@@ -1449,4 +1449,13 @@ body, html, #root {
   }
 
   .tg-media-img { max-width: 180px; }
+
+.tg-item-more {
+  padding: 0 4px;
+  color: #444;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.tg-item-more:hover { color: #fff; }
 }

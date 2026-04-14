@@ -69,6 +69,7 @@ body, html, #root {
   z-index: 10;
   width: 100%;
   max-width: 440px;
+  margin: 0 auto;
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
@@ -82,8 +83,8 @@ body, html, #root {
 }
 
 .auth-page-footer {
-  position: absolute;
-  bottom: 2rem;
+  position: fixed;
+  bottom: 1.5rem;
   left: 0;
   right: 0;
   text-align: center;

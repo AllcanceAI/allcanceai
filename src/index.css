@@ -57,48 +57,67 @@ body, html, #root {
   }
 }
 /* Dark overlay on top of background, but BELOW the card */
+/* --- AUTH PAGE (UI/UX PRO MAX) --- */
+
 .auth-immersive-container {
-  min-height: 100dvh;
-  width: 100vw;
+  width: 100%;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  background: #000;
+  background-image: url("/bg-desktop.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   overflow: hidden;
   padding: 1.5rem;
-  background-image: url("/bg-mobile.png");
-  background-color: #000;
+}
+
+@media (max-width: 768px) {
+  .auth-immersive-container {
+    background-image: url("/bg-mobile.png");
+  }
 }
 
 .auth-immersive-container::before {
   content: "";
   position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.6));
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.8) 100%);
   z-index: 1;
-  pointer-events: none;
 }
 
-/* THE GLASS CARD */
 .auth-glass-card {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 440px;
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 2.5rem;
   padding: clamp(2rem, 5vw, 4rem);
-  width: 100%;
-  max-width: 440px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 40px 100px rgba(0,0,0,0.8);
   display: flex;
   flex-direction: column;
   align-items: center;
-  position: relative;
-  z-index: 10;
-  margin: auto; /* Força centralização em navegadores legados */
+}
+
+.auth-page-footer {
+  position: absolute;
+  bottom: 2rem;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  z-index: 5;
+  pointer-events: none;
 }
 
 .auth-brand-area {
@@ -953,13 +972,35 @@ body, html, #root {
 .qr-placeholder {
   width: 180px;
   height: 180px;
-  background: #f0f0f0;
+  background: #fdfdfd;
   border-radius: 12px;
   position: relative;
-  overflow: hidden;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1rem;
+}
+
+.pro-spinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid rgba(0, 136, 204, 0.1);
+  border-top-color: #0088cc;
+  border-radius: 50%;
+  animation: spin-pro 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes spin-pro {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text-saas {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #888;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .qr-inner-design {
@@ -982,23 +1023,6 @@ body, html, #root {
   border-radius: 10px;
   box-shadow: 0 4px 10px rgba(0,0,0,0.1);
   z-index: 2;
-}
-
-.qr-scanning-line {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: #0088cc;
-  box-shadow: 0 0 10px #0088cc;
-  animation: scan 2s linear infinite;
-  z-index: 1;
-}
-
-@keyframes scan {
-  0% { top: 0; }
-  100% { top: 100%; }
 }
 
 .qr-hint {

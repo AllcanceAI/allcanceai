@@ -364,8 +364,8 @@ function App() {
                           <QRCodeCanvas value={qrCodeLink} size={180} />
                         ) : (
                           <div className="qr-placeholder">
-                             <div className="qr-scanning-line"></div>
-                             <p style={{ color: '#000', fontSize: '10px' }}>Gerando...</p>
+                             <div className="pro-spinner"></div>
+                             <span className="loading-text-saas">Aguardando...</span>
                           </div>
                         )}
                       </div>

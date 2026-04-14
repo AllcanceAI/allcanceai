@@ -369,7 +369,7 @@ function App() {
                           </div>
                         )}
                       </div>
-                      <p className="qr-hint">Abra o Telegram no seu celular e vá em <strong>Configurações > Dispositivos > Conectar Dispositivo</strong></p>
+                      <p className="qr-hint">Abra o Telegram no seu celular e vá em <strong>Configurações {" > "} Dispositivos {" > "} Conectar Dispositivo</strong></p>
                       <button className="back-link-btn" onClick={() => setLoginMethod('phone')}>
                         Entrar com número de telefone
                       </button>

@@ -1150,6 +1150,58 @@ body, html, #root {
   text-transform: uppercase;
 }
 
+.tg-custom-filter {
+  background: #000;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 0.5rem 0.8rem;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s;
+  user-select: none;
+}
+.tg-custom-filter:hover { border-color: rgba(255,255,255,0.2); background: #050505; }
+.tg-custom-filter.open { border-color: #0088cc; box-shadow: 0 0 10px rgba(0,136,204,0.2); }
+
+.tg-filter-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  z-index: 1000;
+  padding: 0.5rem;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+  animation: slideInDown 0.2s ease-out;
+}
+
+@keyframes slideInDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tg-filter-option {
+  padding: 0.65rem 0.8rem;
+  font-size: 0.75rem;
+  color: #ccc;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tg-filter-option:hover { background: rgba(255,255,255,0.05); color: #fff; }
+
 .tg-disconnect-btn {
   font-size: 0.68rem;
   color: #ef4444;

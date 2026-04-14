@@ -21,6 +21,7 @@ function App() {
   // CRM States
   const { archivedIds, tags, contactTags } = useCRM();
   const [selectedFilterTag, setSelectedFilterTag] = useState('all');
+  const [filterOpen, setFilterOpen] = useState(false);
   const [crmMenu, setCrmMenu] = useState({ x: 0, y: 0, visible: false, contactId: null, entity: null });
   
   const [activeSettingView, setActiveSettingView] = useState('main')
@@ -375,15 +376,36 @@ function App() {
                 <div className="tg-user-badge" style={{ display: 'flex', alignItems: 'center' }}>
                   <div className="tg-avatar-sm" style={{ width: '36px', height: '36px', fontSize: '0.8rem' }}>{telegramUser?.firstName?.[0] || 'T'}</div>
                 </div>
-                <div className="tg-filter-area" style={{ flex: 1, marginLeft: '0.25rem' }}>
-                   <select 
-                     value={selectedFilterTag} 
-                     onChange={(e) => setSelectedFilterTag(e.target.value)}
-                     style={{ width: '100%', background: '#000', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '10px', fontSize: '0.75rem', padding: '0.45rem 0.75rem', outline: 'none', cursor: 'pointer' }}
+                <div className="tg-filter-area" style={{ flex: 1, marginLeft: '0.25rem', position: 'relative' }}>
+                   <div 
+                     className={`tg-custom-filter ${filterOpen ? 'open' : ''}`}
+                     onClick={() => setFilterOpen(!filterOpen)}
                    >
-                     <option value="all">Filtrar por Etiqueta</option>
-                     {tags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                   </select>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                       {selectedFilterTag !== 'all' && (
+                         <div className="tag-color-dot" style={{ backgroundColor: tags.find(t => t.id === selectedFilterTag)?.color }}></div>
+                       )}
+                       <span>{selectedFilterTag === 'all' ? 'Filtrar por Tag' : tags.find(t => t.id === selectedFilterTag)?.name}</span>
+                     </div>
+                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ transform: filterOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
+                   </div>
+                   
+                   {filterOpen && (
+                     <>
+                       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} onClick={() => setFilterOpen(false)} />
+                       <div className="tg-filter-dropdown">
+                         <div className="tg-filter-option" onClick={() => { setSelectedFilterTag('all'); setFilterOpen(false); }}>
+                           Todas as Mensagens
+                         </div>
+                         {tags.map(tag => (
+                           <div key={tag.id} className="tg-filter-option" onClick={() => { setSelectedFilterTag(tag.id); setFilterOpen(false); }}>
+                             <div className="tag-color-dot" style={{ backgroundColor: tag.color }}></div>
+                             {tag.name}
+                           </div>
+                         ))}
+                       </div>
+                     </>
+                   )}
                 </div>
                 <button className="tg-disconnect-btn" title="Desconectar" onClick={() => {
                   import('./services/telegramService').then(m => m.clearSession());

@@ -1071,11 +1071,12 @@ body, html, #root {
 
 .tg-interface {
   display: flex;
-  height: calc(100dvh - 130px);
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 20px;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  background: rgba(255,255,255,0.01);
   overflow: hidden;
+  position: relative;
 }
 
 .tg-sidebar-panel {
@@ -1373,13 +1374,28 @@ body, html, #root {
 }
 .tg-media-load-btn:hover { background: rgba(255,255,255,0.10); }
 
+.tg-media-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.tg-media-overlay-hint {
+  font-size: 0.65rem;
+  color: #555;
+  font-style: italic;
+  line-height: 1.2;
+}
+
 @media (max-width: 768px) {
   .tg-back-btn { display: flex; }
 
   .tg-interface {
     flex-direction: column;
-    height: calc(100dvh - 110px);
-    border-radius: 12px;
+    height: 100%;
+    width: 100%;
+    border-radius: 0;
     position: relative;
   }
 

@@ -438,19 +438,28 @@ function App() {
                       return (
                         <div key={i} className={`tg-bubble ${msg.out ? 'out' : 'in'}`}>
                           {hasText && <p>{msg.message}</p>}
-                          {hasMedia && !mediaUrl && (
-                            <button className="tg-media-load-btn" onClick={async () => {
-                              const url = await downloadMediaAsUrl(msg);
-                              if (url) setTgMediaUrls(prev => ({ ...prev, [msgId]: url }));
-                            }}>
-                              {isPhoto ? '📷 Toque para ver a foto' : isVideo ? '🎥 Toque para ver o vídeo' : '📎 Baixar arquivo'}
-                            </button>
-                          )}
-                          {hasMedia && mediaUrl && isPhoto && (
-                            <img src={mediaUrl} alt="foto" className="tg-media-img" onClick={() => window.open(mediaUrl, '_blank')} />
-                          )}
-                          {hasMedia && mediaUrl && !isPhoto && (
-                            <a href={mediaUrl} download className="tg-media-load-btn">📥 Baixar arquivo</a>
+                          {hasMedia && (
+                            <div className="tg-media-wrapper">
+                              {!mediaUrl && (
+                                <button className="tg-media-load-btn" onClick={async () => {
+                                  const url = await downloadMediaAsUrl(msg);
+                                  if (url) setTgMediaUrls(prev => ({ ...prev, [msgId]: url }));
+                                }}>
+                                  {isPhoto ? '📷 Ver Foto' : isVideo ? '🎥 Ver Vídeo' : '📎 Ver Arquivo'}
+                                </button>
+                              )}
+                              {mediaUrl && isPhoto && (
+                                <img src={mediaUrl} alt="foto" className="tg-media-img" onClick={() => window.open(mediaUrl, '_blank')} />
+                              )}
+                              {mediaUrl && !isPhoto && (
+                                <a href={mediaUrl} download className="tg-media-load-btn">📥 Download</a>
+                              )}
+                              {!isPhoto && (
+                                <div className="tg-media-overlay-hint">
+                                  <span>Para visualizar mídia completa, abra o Telegram oficial</span>
+                                </div>
+                              )}
+                            </div>
                           )}
                           <span className="tg-bubble-time">
                             {new Date(msg.date * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}

@@ -349,6 +349,10 @@ function App() {
                     {renderChatMenu(chat.id, chat.pinned)}
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        )
       case 'telegram':
         return telegramStatus === 'connected' ? (
           <div className={`tg-interface${tgMobileView === 'chat' ? ' mobile-chat-active' : ''}`}>

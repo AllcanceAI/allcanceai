@@ -368,28 +368,30 @@ function App() {
           <div className={`tg-interface${tgMobileView === 'chat' ? ' mobile-chat-active' : ''}`}>
             {/* Painel esquerdo: lista de chats */}
             <div className="tg-sidebar-panel">
-              <div className="tg-panel-header">
-                <button className="tg-return-btn" onClick={() => setActiveTab('agente')} style={{ marginRight: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '0.4rem 0.8rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                   ← Retornar
+              <div className="tg-panel-header" style={{ padding: '0.75rem 1rem', height: '64px', display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <button className="tg-return-btn" onClick={() => setActiveTab('agente')} title="Retornar ao Início" style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', width: '36px', height: '36px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
-                <div className="tg-user-badge">
-                  <div className="tg-avatar-sm">{telegramUser?.firstName?.[0] || 'T'}</div>
-                  <span>{telegramUser?.firstName || 'Telegram'}</span>
+                <div className="tg-user-badge" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="tg-avatar-sm" style={{ width: '32px', height: '32px', fontSize: '0.75rem' }}>{telegramUser?.firstName?.[0] || 'T'}</div>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff', whiteSpace: 'nowrap', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{telegramUser?.firstName || 'Telegram'}</span>
                 </div>
-                <div className="tg-filter-area" style={{ marginLeft: 'auto', marginRight: '0.5rem' }}>
+                <div className="tg-filter-area" style={{ flex: 1 }}>
                    <select 
                      value={selectedFilterTag} 
                      onChange={(e) => setSelectedFilterTag(e.target.value)}
-                     style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px', fontSize: '0.7rem', padding: '0.2rem' }}
+                     style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#888', borderRadius: '8px', fontSize: '0.7rem', padding: '0.35rem' }}
                    >
-                     <option value="all">Todas</option>
+                     <option value="all">Todas as Tags</option>
                      {tags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                    </select>
                 </div>
-                <button className="tg-disconnect-btn" onClick={() => {
+                <button className="tg-disconnect-btn" title="Desconectar" onClick={() => {
                   import('./services/telegramService').then(m => m.clearSession());
                   setTelegramStatus('disconnected'); setTgDialogs([]); setSelectedTgChat(null);
-                }}>Sair</button>
+                }} style={{ padding: '0.4rem', background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer' }}>
+                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                </button>
               </div>
               <div className="tg-chat-list">
                 {tgLoadingChats ? (
@@ -423,31 +425,31 @@ function App() {
                         }}
                       >
                         {lastTag && (
-                          <div className="tag-gradient-overlay" style={{ background: `linear-gradient(to left, ${lastTag.color}33, transparent)` }}></div>
+                          <div className="tag-border-indicator" style={{ backgroundColor: lastTag.color }}></div>
                         )}
-                        <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', width: '100%' }}>
+                        <div className="tg-chat-content-flex">
                           {avatarUrl ? (
                             <img src={avatarUrl} alt="" className="tg-avatar tg-avatar-photo" />
                           ) : (
                             <div className="tg-avatar">{(dialog.name || '?')[0]}</div>
                           )}
-                          <div className="tg-chat-info">
-                            <div className="tg-chat-row">
+                          <div className="tg-chat-details">
+                            <div className="tg-chat-top-row">
                               <span className="tg-chat-name">{dialog.name || 'Sem nome'}</span>
                               <span className="tg-chat-time">
                                 {dialog.message?.date ? new Date(dialog.message.date * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
                               </span>
                             </div>
-                            <div className="tg-chat-row">
+                            <div className="tg-chat-bottom-row">
                               <span className="tg-last-msg">
-                                {dialog.message?.message?.slice(0, 35) || (dialog.message?.media ? '📎 Mídia' : '')}
+                                {dialog.message?.message?.slice(0, 32) || (dialog.message?.media ? '📎 Mídia' : '')}
                               </span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <div className="tg-indicators">
                                 {dialog.unreadCount > 0 && <span className="tg-unread-badge">{dialog.unreadCount}</span>}
-                                <div className="tg-item-more" onClick={(e) => {
+                                <button className="tg-item-more-btn" onClick={(e) => {
                                   e.stopPropagation();
                                   setCrmMenu({ x: e.pageX, y: e.pageY, visible: true, contactId, entity: dialog.entity });
-                                }}>⋮</div>
+                                }}>⋮</button>
                               </div>
                             </div>
                           </div>

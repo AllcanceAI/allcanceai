@@ -26,15 +26,33 @@ export const CrmMenu = ({ x, y, onClose, contactId, entity }) => {
     onClose();
   };
 
+  const subMenuWidth = 180;
+  const isRightSide = x > window.innerWidth / 2;
+
   return (
     <>
       <div className="crm-context-menu" style={{ top: y, left: x }}>
-        <div className="crm-menu-item" onMouseEnter={() => setShowTagSubmenu(true)}>
-          Etiquetar <span style={{ marginLeft: 'auto', fontSize: '0.7rem', opacity: 0.5 }}>▶</span>
+        <div 
+          className="crm-menu-item" 
+          onMouseEnter={() => setShowTagSubmenu(true)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowTagSubmenu(!showTagSubmenu);
+          }}
+          style={{ position: 'relative' }}
+        >
+          Etiquetar <span style={{ marginLeft: 'auto', fontSize: '0.7rem', opacity: 0.5 }}>{isRightSide ? '◀' : '▶'}</span>
           {showTagSubmenu && (
-            <div className="crm-context-menu" style={{ left: '100%', top: 0 }}>
+            <div 
+              className="crm-context-menu" 
+              style={{ 
+                left: isRightSide ? `-${subMenuWidth}px` : '100%', 
+                top: 0,
+                boxShadow: isRightSide ? '-10px 10px 30px rgba(0,0,0,0.5)' : '10px 10px 30px rgba(0,0,0,0.5)'
+              }}
+            >
               {tags.map(t => (
-                <div key={t.id} className="crm-menu-item" onClick={() => { tagContact(contactId, t.id); onClose(); }}>
+                <div key={t.id} className="crm-menu-item" onClick={(e) => { e.stopPropagation(); tagContact(contactId, t.id); onClose(); }}>
                   <div className="tag-color-dot" style={{ backgroundColor: t.color }}></div>
                   {t.name}
                 </div>

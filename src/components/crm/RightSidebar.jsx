@@ -15,11 +15,22 @@ const RightSidebar = ({ activeChat }) => {
   const [showColorModal, setShowColorModal] = useState(false);
   const [tagToDelete, setTagToDelete] = useState(null);
 
+  // Gateway Config States
+  const [apiKey, setApiKey] = useState('');
+  const [apiSecret, setApiSecret] = useState('');
+
   const PRESET_COLORS = [
     '#ff4444', '#ff8800', '#ffbb33', '#00C851', '#007E33', 
     '#33b5e5', '#0099CC', '#2BBBAD', '#4285F4', '#aa66cc', 
     '#a6c', '#4b515d', '#3E4551', '#212121', '#ffffff'
   ];
+
+  const GATEWAY_ICONS = {
+    'PushinPay': <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>,
+    'Mercado Pago': <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7"/><path d="M16 19h6"/><path d="M19 16v6"/><circle cx="9" cy="12" r="3"/></svg>,
+    'Stripe': <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20"/><path d="m17 5-5-3-5 3"/><path d="m17 19-5 3-5-3"/><path d="M2 12h20"/></svg>,
+    'OmegaPay': <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+  };
 
   const handleStartAddTag = () => {
     if (!newTagName) return;
@@ -53,7 +64,7 @@ const RightSidebar = ({ activeChat }) => {
           </div>
           {tabSelectorOpen && (
             <div className="tg-filter-dropdown" style={{ display: 'block', top: '100%', left: '1.25rem', right: '1.25rem', zIndex: 1002 }}>
-              {['Etiquetas', 'Agendamentos', 'Arquivados', 'Assinantes'].map(tab => (
+              {['Etiquetas', 'Agendamentos', 'Arquivados', 'Gateway'].map(tab => (
                 <div key={tab} className="tg-filter-option" onClick={() => { setActiveTab(tab); setTabSelectorOpen(false); }}>
                   {tab}
                 </div>
@@ -135,15 +146,16 @@ const RightSidebar = ({ activeChat }) => {
           </div>
         )}
 
-        {activeTab === 'Assinantes' && (
+        {activeTab === 'Gateway' && (
           <div className="tab-pane">
             {!gateway ? (
               <div className="gateway-choice-card" style={{ textAlign: 'center', padding: '1rem 0' }}>
-                <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: '1.5rem' }}>Conecte um gateway para gerenciar seus assinantes.</p>
+                <div className="crm-section-title">Selecione o Gateway</div>
+                <p style={{ fontSize: '0.85rem', color: '#555', marginBottom: '2rem' }}>Conecte seu provedor para automação de pagamentos.</p>
                 <div className="gateway-grid">
                   {['PushinPay', 'Mercado Pago', 'Stripe', 'OmegaPay'].map(g => (
                     <div key={g} className="gateway-option" onClick={() => setGateway(g)}>
-                      <span className="gateway-logo">💰</span>
+                      <div className="gateway-icon-wrapper">{GATEWAY_ICONS[g]}</div>
                       <span className="gateway-name">{g}</span>
                     </div>
                   ))}
@@ -152,30 +164,44 @@ const RightSidebar = ({ activeChat }) => {
             ) : (
               <div className="subscribers-list">
                  <div className="crm-section-title">
-                   Ativos ({gateway})
-                   <button onClick={() => setGateway(null)} style={{ fontSize: '0.6rem', color: '#ff4444', background: 'none', border: 'none', cursor: 'pointer' }}>Trocar</button>
+                   Configurações {gateway}
+                   <button onClick={() => setGateway(null)} style={{ fontSize: '0.65rem', color: '#ff4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Trocar Gateway</button>
                  </div>
-                 {[
-                   { name: 'Ana Silva', status: 'ativo', days: 22, progress: 75, color: '#00C851' },
-                   { name: 'Bruno Costa', status: 'vencendo', days: 2, progress: 92, color: '#ffbb33' },
-                   { name: 'Carla Dias', status: 'cortado', days: 0, progress: 100, color: '#ff4444' }
-                 ].map((sub, i) => (
-                   <div key={i} className="subscriber-card" style={{ background: 'rgba(255,255,255,0.02)', padding: '0.8rem', borderRadius: '12px', marginBottom: '0.75rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{sub.name}</span>
-                        <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: sub.color }}>{sub.status}</span>
-                      </div>
-                      <div style={{ height: '4px', background: '#222', borderRadius: '2px', marginBottom: '0.4rem', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${sub.progress}%`, background: sub.color }}></div>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#555' }}>
-                        <span>Expira em {sub.days} dias</span>
-                        <span>R$ 49,90/mês</span>
-                      </div>
-                   </div>
-                 ))}
-                 <div style={{ marginTop: '1.5rem', background: 'rgba(0,136,204,0.05)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(0,136,204,0.1)' }}>
-                   <p style={{ fontSize: '0.7rem', color: '#0088cc', margin: 0 }}>💡 Use os Webhooks da {gateway} para automatizar essa lista em tempo real.</p>
+                 
+                 <div className="tag-creation-card" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.65rem', color: '#555', textTransform: 'uppercase', marginBottom: '0.5rem', fontWeight: '800' }}>Chave API (Public)</label>
+                      <input 
+                        className="tg-input" 
+                        type="password" 
+                        placeholder="pk_live_..." 
+                        style={{ background: '#000', border: '1px solid #111' }}
+                        value={apiKey}
+                        onChange={e => setApiKey(e.target.value)}
+                      />
+                    </div>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.65rem', color: '#555', textTransform: 'uppercase', marginBottom: '0.5rem', fontWeight: '800' }}>Token de Acesso (Secret)</label>
+                      <input 
+                        className="tg-input" 
+                        type="password" 
+                        placeholder="sk_live_..." 
+                        style={{ background: '#000', border: '1px solid #111' }}
+                        value={apiSecret}
+                        onChange={e => setApiSecret(e.target.value)}
+                      />
+                    </div>
+                    <button className="tag-add-confirm" onClick={() => alert('Configurações salvas!')} style={{ background: '#0088cc', color: '#fff' }}>
+                      Salvar e Conectar
+                    </button>
+                 </div>
+
+                 <div style={{ marginTop: '2rem', background: 'rgba(0,136,204,0.05)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(0,136,204,0.1)' }}>
+                   <p style={{ fontSize: '0.75rem', color: '#0088cc', margin: 0, lineHeight: '1.5' }}>
+                     <strong>Webhook Ativo:</strong><br/>
+                     Use o endpoint abaixo no seu painel da {gateway}:<br/>
+                     <code style={{ fontSize: '0.6rem', color: '#aaa', display: 'block', marginTop: '0.5rem', background: '#000', padding: '0.4rem', borderRadius: '4px' }}>https://api.allcanceai.com/webhooks/{gateway.toLowerCase()}</code>
+                   </p>
                  </div>
               </div>
             )}

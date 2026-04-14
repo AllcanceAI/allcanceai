@@ -24,6 +24,37 @@ function App() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [crmMenu, setCrmMenu] = useState({ x: 0, y: 0, visible: false, contactId: null, entity: null });
   
+  const handleCrmMenu = (e, contactId, entity) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const menuWidth = 180;
+    const menuHeight = 220;
+    let posX = e.pageX || e.clientX;
+    let posY = e.pageY || e.clientY;
+
+    // Se clicar muito à direita, empurra o menu para a esquerda
+    if (posX + menuWidth > window.innerWidth) {
+      posX = posX - menuWidth;
+    }
+    // Se clicar muito embaixo, sobe o menu
+    if (posY + menuHeight > window.innerHeight) {
+      posY = posY - menuHeight;
+    }
+
+    // Garantia de que não fique negativo
+    posX = Math.max(10, posX);
+    posY = Math.max(10, posY);
+
+    setCrmMenu({ 
+      x: posX, 
+      y: posY, 
+      visible: true, 
+      contactId, 
+      entity 
+    });
+  };
+  
   const [activeSettingView, setActiveSettingView] = useState('main')
   const [copied, setCopied] = useState(false)
   const [menuOpenId, setMenuOpenId] = useState(null)
@@ -430,10 +461,7 @@ function App() {
                     return (
                       <div key={i}
                         className={`tg-chat-item ${selectedTgChat === dialog ? 'active' : ''} ${lastTag ? 'has-tag' : ''}`}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          setCrmMenu({ x: e.pageX, y: e.pageY, visible: true, contactId, entity: dialog.entity });
-                        }}
+                        onContextMenu={(e) => handleCrmMenu(e, contactId, dialog.entity)}
                         onClick={async () => {
                           setSelectedTgChat(dialog);
                           setTgMobileView('chat');
@@ -467,10 +495,7 @@ function App() {
                               </span>
                               <div className="tg-indicators">
                                 {dialog.unreadCount > 0 && <span className="tg-unread-badge">{dialog.unreadCount}</span>}
-                                <button className="tg-item-more-btn" onClick={(e) => {
-                                  e.stopPropagation();
-                                  setCrmMenu({ x: e.pageX, y: e.pageY, visible: true, contactId, entity: dialog.entity });
-                                }}>⋮</button>
+                                <button className="tg-item-more-btn" onClick={(e) => handleCrmMenu(e, contactId, dialog.entity)}>⋮</button>
                               </div>
                             </div>
                           </div>
@@ -495,11 +520,11 @@ function App() {
                       <div className="tg-avatar">{(selectedTgChat.name || '?')[0]}</div>
                     )}
                     <p className="tg-chat-name">{selectedTgChat.name}</p>
-                    <div 
-                      className="tg-item-more" 
-                      style={{ marginLeft: 'auto', padding: '0.5rem', cursor: 'pointer' }}
-                      onClick={(e) => setCrmMenu({ x: e.pageX, y: e.pageY, visible: true, contactId: selectedTgChat.id?.toString(), entity: selectedTgChat.entity })}
-                    >⋮</div>
+                      <div 
+                        className="tg-item-more" 
+                        style={{ marginLeft: 'auto', padding: '0.5rem', cursor: 'pointer' }}
+                        onClick={(e) => handleCrmMenu(e, selectedTgChat.id?.toString(), selectedTgChat.entity)}
+                      >⋮</div>
                   </div>
                   <div className="tg-messages-area">
                     {tgMessages.map((msg, i) => {

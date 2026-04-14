@@ -372,17 +372,16 @@ function App() {
                 <button className="tg-return-btn" onClick={() => setActiveTab('agente')} title="Retornar ao Início" style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', width: '36px', height: '36px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
-                <div className="tg-user-badge" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div className="tg-avatar-sm" style={{ width: '32px', height: '32px', fontSize: '0.75rem' }}>{telegramUser?.firstName?.[0] || 'T'}</div>
-                  <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff', whiteSpace: 'nowrap', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{telegramUser?.firstName || 'Telegram'}</span>
+                <div className="tg-user-badge" style={{ display: 'flex', alignItems: 'center' }}>
+                  <div className="tg-avatar-sm" style={{ width: '36px', height: '36px', fontSize: '0.8rem' }}>{telegramUser?.firstName?.[0] || 'T'}</div>
                 </div>
-                <div className="tg-filter-area" style={{ flex: 1 }}>
+                <div className="tg-filter-area" style={{ flex: 1, marginLeft: '0.25rem' }}>
                    <select 
                      value={selectedFilterTag} 
                      onChange={(e) => setSelectedFilterTag(e.target.value)}
-                     style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#888', borderRadius: '8px', fontSize: '0.7rem', padding: '0.35rem' }}
+                     style={{ width: '100%', background: '#000', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '10px', fontSize: '0.75rem', padding: '0.45rem 0.75rem', outline: 'none', cursor: 'pointer' }}
                    >
-                     <option value="all">Todas as Tags</option>
+                     <option value="all">Filtrar por Etiqueta</option>
                      {tags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                    </select>
                 </div>

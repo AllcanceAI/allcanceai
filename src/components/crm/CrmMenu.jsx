@@ -30,7 +30,7 @@ export const CrmMenu = ({ x, y, onClose, contactId, entity }) => {
     <>
       <div className="crm-context-menu" style={{ top: y, left: x }}>
         <div className="crm-menu-item" onMouseEnter={() => setShowTagSubmenu(true)}>
-          🏷️ Etiquetar <span>▶</span>
+          Etiquetar <span style={{ marginLeft: 'auto', fontSize: '0.7rem', opacity: 0.5 }}>▶</span>
           {showTagSubmenu && (
             <div className="crm-context-menu" style={{ left: '100%', top: 0 }}>
               {tags.map(t => (
@@ -42,8 +42,8 @@ export const CrmMenu = ({ x, y, onClose, contactId, entity }) => {
             </div>
           )}
         </div>
-        <div className="crm-menu-item" onClick={() => setShowScheduleModal(true)}>⏰ Agendar Mensagem</div>
-        <div className="crm-menu-item" onClick={() => { archiveContact(contactId); onClose(); }}>📦 Arquivar</div>
+        <div className="crm-menu-item" onClick={() => setShowScheduleModal(true)}>Agendar Mensagem</div>
+        <div className="crm-menu-item" onClick={() => { archiveContact(contactId); onClose(); }}>Arquivar Conversa</div>
         <div className="crm-divider" style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '0.25rem 0' }}></div>
         <div className="crm-menu-item" style={{ color: '#ff4444' }} onClick={onClose}>Cancelar</div>
       </div>

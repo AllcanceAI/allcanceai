@@ -39,8 +39,10 @@ export const startQRLogin = async (onQRGenerated, onLoginSuccess) => {
           return true; // Continua tentando
         },
         qrCode: async (qr) => {
-           // O 'qr' retornado é o token que deve ser transformado em QR Code
-           const qrLink = `tg://login?token=${qr.token.toString('base64url')}`;
+           // Conversão manual para base64url para garantir compatibilidade com todos os browsers
+           const base64 = qr.token.toString('base64');
+           const base64url = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+           const qrLink = `tg://login?token=${base64url}`;
            onQRGenerated(qrLink);
         },
       }

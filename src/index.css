@@ -57,6 +57,22 @@ body, html, #root {
   }
 }
 /* Dark overlay on top of background, but BELOW the card */
+.auth-immersive-container {
+  min-height: 100dvh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow: hidden;
+  padding: 1.5rem;
+  background-image: url("/bg-mobile.png");
+  background-color: #000;
+}
+
 .auth-immersive-container::before {
   content: "";
   position: absolute;
@@ -68,19 +84,21 @@ body, html, #root {
 
 /* THE GLASS CARD */
 .auth-glass-card {
-  position: relative;
-  z-index: 10;
-  width: 92%;
-  max-width: 28rem;
-  background: var(--glass-bg);
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
-  border: 1px solid var(--glass-border);
-  border-radius: 2rem;
-  padding: clamp(2rem, 5vh, 3.5rem) clamp(1.5rem, 5vw, 2.5rem);
-  box-shadow: 0 40px 100px rgba(0,0,0,0.8);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2.5rem;
+  padding: clamp(2rem, 5vw, 4rem);
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+  margin: auto; /* Força centralização em navegadores legados */
 }
 
 .auth-brand-area {

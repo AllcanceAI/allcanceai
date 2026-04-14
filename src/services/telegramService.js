@@ -30,12 +30,15 @@ export const startQRLogin = async (onQRGenerated, onLoginSuccess) => {
   try {
     await telegramClient.connect();
     
-    // Inicia o processo de QR Code
+    // Inicia o processo de QR Code com o callback correto
     const res = await telegramClient.signInUserWithQrCode(
       { apiId, apiHash },
       {
-        onError: (err) => console.error("QR Login Error:", err),
-        onQrCode: (qr) => {
+        onError: (err) => {
+          console.error("QR Login Error:", err);
+          return true; // Continua tentando
+        },
+        qrCode: async (qr) => {
            // O 'qr' retornado é o token que deve ser transformado em QR Code
            const qrLink = `tg://login?token=${qr.token.toString('base64url')}`;
            onQRGenerated(qrLink);

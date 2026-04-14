@@ -4,34 +4,43 @@ import './crmOverlay.css';
 
 const RightSidebar = ({ activeChat }) => {
   const [activeTab, setActiveTab] = useState('Etiquetas');
-  const { tags, setTags, schedules, archivedIds, unarchiveContact, gateway, setGateway } = useCRM();
+  const [tabSelectorOpen, setTabSelectorOpen] = useState(false);
+  const { tags, setTags, removeTag, schedules, archivedIds, unarchiveContact, gateway, setGateway } = useCRM();
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState('#0088cc');
 
-  const addTag = () => {
+  const handleAddTag = () => {
     if (!newTagName) return;
-    setTags([...tags, { id: Date.now().toString(), name: newTagName, color: newTagColor }]);
+    setTags(prev => [...prev, { id: Date.now().toString(), name: newTagName, color: newTagColor }]);
     setNewTagName('');
   };
 
-  const removeTag = (id) => {
-    setTags(tags.filter(t => t.id !== id));
+  const handleRemoveTag = (tag) => {
+    if (window.confirm(`Atenção: Todos os chats marcados com "${tag.name}" serão desetiquetados. Deseja continuar?`)) {
+      removeTag(tag.id);
+    }
   };
 
   return (
     <div className="crm-sidebar-container">
-      <div className="crm-tabs-scroll-container">
-        <div className="crm-tabs-header">
-          {['Etiquetas', 'Agendamentos', 'Arquivados', 'Assinantes'].map(tab => (
-            <button 
-              key={tab} 
-              className={`crm-tab-btn ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+      {/* Submenu Dropdown Selector */}
+      <div className="crm-tabs-selector-area">
+          <div className={`tg-custom-filter ${tabSelectorOpen ? 'open' : ''}`} onClick={() => setTabSelectorOpen(!tabSelectorOpen)}>
+            <span>Módulo: {activeTab}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ transform: tabSelectorOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          {tabSelectorOpen && (
+            <>
+              <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} onClick={() => setTabSelectorOpen(false)} />
+              <div className="tg-filter-dropdown" style={{ top: 'calc(100% + 4px)', padding: '0.25rem' }}>
+                {['Etiquetas', 'Agendamentos', 'Arquivados', 'Assinantes'].map(tab => (
+                  <div key={tab} className="tg-filter-option" onClick={() => { setActiveTab(tab); setTabSelectorOpen(false); }}>
+                    {tab}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
       </div>
 
       <div className="crm-tab-content">
@@ -47,7 +56,7 @@ const RightSidebar = ({ activeChat }) => {
                   value={newTagName}
                   onChange={e => setNewTagName(e.target.value)}
                 />
-                <div className="color-picker-wrapper">
+                <div className="color-picker-wrapper" title="Escolha a cor">
                   <input 
                     type="color" 
                     value={newTagColor}
@@ -55,7 +64,14 @@ const RightSidebar = ({ activeChat }) => {
                   />
                 </div>
               </div>
-              <button className="tag-add-confirm" onClick={addTag}>Criar Etiqueta</button>
+              <button 
+                className="tag-add-confirm" 
+                onClick={handleAddTag}
+                disabled={!newTagName}
+                style={{ opacity: newTagName ? 1 : 0.5 }}
+              >
+                Criar Etiqueta
+              </button>
             </div>
 
             <div className="tag-list">
@@ -63,7 +79,7 @@ const RightSidebar = ({ activeChat }) => {
                 <div key={tag.id} className="tag-card" style={{ borderColor: `${tag.color}44` }}>
                   <div className="tag-color-dot" style={{ backgroundColor: tag.color, boxShadow: `0 0 10px ${tag.color}66` }}></div>
                   <span className="tag-name">{tag.name}</span>
-                  <button className="tag-remove-btn" onClick={() => removeTag(tag.id)}>×</button>
+                  <button className="tag-remove-btn" onClick={() => handleRemoveTag(tag)}>×</button>
                 </div>
               ))}
             </div>

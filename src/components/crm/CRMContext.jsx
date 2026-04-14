@@ -81,9 +81,20 @@ export const CRMProvider = ({ children }) => {
     });
   };
 
+  const removeTag = (tagId) => {
+    setTags(prev => prev.filter(t => t.id !== tagId));
+    setContactTags(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(contactId => {
+        next[contactId] = next[contactId].filter(id => id !== tagId);
+      });
+      return next;
+    });
+  };
+
   return (
     <CRMContext.Provider value={{
-      tags, setTags,
+      tags, setTags, removeTag,
       contactTags, tagContact, untagContact,
       schedules, setSchedules,
       archivedIds, archiveContact, unarchiveContact,

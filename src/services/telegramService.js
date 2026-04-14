@@ -3,15 +3,22 @@ import { StringSession } from 'telegram/sessions';
 
 const apiId = parseInt(import.meta.env.VITE_TELEGRAM_API_ID);
 const apiHash = import.meta.env.VITE_TELEGRAM_API_HASH;
+const SESSION_KEY = 'allcance_telegram_session';
 
-// Instância singleton do cliente para evitar múltiplas conexões
 let client = null;
 
-export const getTelegramClient = (sessionString = "") => {
+export const getSavedSession = () => localStorage.getItem(SESSION_KEY) || '';
+
+export const clearSession = () => {
+  localStorage.removeItem(SESSION_KEY);
+  client = null;
+};
+
+export const getTelegramClient = (sessionString = '') => {
   if (client) return client;
-  
+
   if (!apiId || !apiHash || isNaN(apiId)) {
-    console.error("Telegram API credentials missing in .env");
+    console.error('Telegram API credentials missing in .env');
     return null;
   }
 
@@ -24,36 +31,47 @@ export const getTelegramClient = (sessionString = "") => {
 };
 
 export const startQRLogin = async (onQRGenerated, onLoginSuccess) => {
-  const telegramClient = getTelegramClient();
+  const savedSession = getSavedSession();
+  const telegramClient = getTelegramClient(savedSession);
   if (!telegramClient) return;
 
   try {
     await telegramClient.connect();
-    
-    // Inicia o processo de QR Code com o callback correto
-    const res = await telegramClient.signInUserWithQrCode(
+
+    // Se já tem sessão salva, verifica se ainda está autorizado
+    if (savedSession) {
+      const authorized = await telegramClient.isUserAuthorized();
+      if (authorized) {
+        const me = await telegramClient.getMe();
+        onLoginSuccess(savedSession, me);
+        return;
+      }
+    }
+
+    // Inicia o processo de QR Code
+    await telegramClient.signInUserWithQrCode(
       { apiId, apiHash },
       {
         onError: (err) => {
-          console.error("QR Login Error:", err);
+          console.error('QR Login Error:', err);
           return true; // Continua tentando
         },
         qrCode: async (qr) => {
-           // Conversão manual para base64url para garantir compatibilidade com todos os browsers
-           const base64 = qr.token.toString('base64');
-           const base64url = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-           const qrLink = `tg://login?token=${base64url}`;
-           onQRGenerated(qrLink);
+          const base64 = qr.token.toString('base64');
+          const base64url = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+          const qrLink = `tg://login?token=${base64url}`;
+          onQRGenerated(qrLink);
         },
       }
     );
 
-    // Se o código acima finalizar sem erro, o login foi um sucesso
-    if (res) {
-      const sessionString = telegramClient.session.save();
-      onLoginSuccess(sessionString, res);
-    }
+    // Chegou aqui = login bem-sucedido (sem erro)
+    const sessionString = telegramClient.session.save();
+    localStorage.setItem(SESSION_KEY, sessionString);
+    const me = await telegramClient.getMe();
+    onLoginSuccess(sessionString, me);
+
   } catch (err) {
-    console.error("Failed to start Telegram QR Login:", err);
+    console.error('Failed to start Telegram QR Login:', err);
   }
 };

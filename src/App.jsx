@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
-import { startQRLogin } from './services/telegramService'
+import { startQRLogin, getSavedSession } from './services/telegramService'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -20,6 +20,7 @@ function App() {
   const [loginMethod, setLoginMethod] = useState('phone') 
   const [qrCodeLink, setQrCodeLink] = useState('')
   const [telegramStatus, setTelegramStatus] = useState('disconnected')
+  const [telegramUser, setTelegramUser] = useState(null)
   
   const [tokenUsage, setTokenUsage] = useState({ 
     monthlyUsed: 0, 
@@ -29,15 +30,29 @@ function App() {
   })
   const [userPlan, setUserPlan] = useState('monthly')
 
-  // Inicia Login QR se o método mudar para QR
+  // Verifica sessão salva ao inicializar
   useEffect(() => {
-    if (loginMethod === 'qr' && !qrCodeLink) {
+    const saved = getSavedSession();
+    if (saved) {
+      startQRLogin(
+        () => {},
+        (_, me) => {
+          setTelegramStatus('connected');
+          setTelegramUser(me);
+        }
+      );
+    }
+  }, [])
+
+  // Inicia Login QR quando o método muda para QR
+  useEffect(() => {
+    if (loginMethod === 'qr') {
+      setQrCodeLink('')
       startQRLogin(
         (link) => setQrCodeLink(link),
-        (session, user) => {
-          console.log("LOGIN SUCCESS!", user);
+        (_, me) => {
           setTelegramStatus('connected');
-          // Aqui você salvaria a 'session' no Supabase para uso futuro
+          setTelegramUser(me);
         }
       );
     }

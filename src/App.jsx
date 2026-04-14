@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
-import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode } from './services/telegramService'
+import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode, getDialogs, getChatMessages, sendTelegramMessage } from './services/telegramService'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -26,6 +26,12 @@ function App() {
   const [phoneCodeHash, setPhoneCodeHash] = useState('')
   const [telegramLoading, setTelegramLoading] = useState(false)
   const [telegramError, setTelegramError] = useState('')
+  const [tgDialogs, setTgDialogs] = useState([])
+  const [selectedTgChat, setSelectedTgChat] = useState(null)
+  const [tgMessages, setTgMessages] = useState([])
+  const [tgInput, setTgInput] = useState('')
+  const [tgLoadingChats, setTgLoadingChats] = useState(false)
+  const tgMessagesEndRef = useRef(null)
   
   const [tokenUsage, setTokenUsage] = useState({ 
     monthlyUsed: 0, 
@@ -62,6 +68,17 @@ function App() {
       );
     }
   }, [loginMethod])
+
+  // Carrega conversas quando conecta
+  useEffect(() => {
+    if (telegramStatus === 'connected') {
+      setTgLoadingChats(true)
+      getDialogs(30).then(dialogs => {
+        setTgDialogs(dialogs)
+        setTgLoadingChats(false)
+      }).catch(() => setTgLoadingChats(false))
+    }
+  }, [telegramStatus])
 
   const textareaRef = useRef(null)
   const messagesEndRef = useRef(null)
@@ -326,15 +343,124 @@ function App() {
           </div>
         )
       case 'telegram':
-        return (
+        return telegramStatus === 'connected' ? (
+          <div className="tg-interface">
+            {/* Painel esquerdo: lista de chats */}
+            <div className="tg-sidebar-panel">
+              <div className="tg-panel-header">
+                <div className="tg-user-badge">
+                  <div className="tg-avatar-sm">
+                    {telegramUser?.firstName?.[0] || 'T'}
+                  </div>
+                  <span>{telegramUser?.firstName || 'Telegram'}</span>
+                </div>
+                <button className="tg-disconnect-btn" onClick={() => {
+                  import('./services/telegramService').then(m => m.clearSession());
+                  setTelegramStatus('disconnected');
+                  setTgDialogs([]);
+                  setSelectedTgChat(null);
+                }}>Desconectar</button>
+              </div>
+              <div className="tg-chat-list">
+                {tgLoadingChats ? (
+                  <div className="tg-loading"><div className="pro-spinner"></div></div>
+                ) : tgDialogs.map((dialog, i) => (
+                  <div
+                    key={i}
+                    className={`tg-chat-item ${selectedTgChat === dialog ? 'active' : ''}`}
+                    onClick={async () => {
+                      setSelectedTgChat(dialog);
+                      setTgMessages([]);
+                      const msgs = await getChatMessages(dialog.entity, 50);
+                      setTgMessages(msgs);
+                      setTimeout(() => tgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                    }}
+                  >
+                    <div className="tg-avatar">{(dialog.name || '?')[0]}</div>
+                    <div className="tg-chat-info">
+                      <div className="tg-chat-row">
+                        <span className="tg-chat-name">{dialog.name || 'Sem nome'}</span>
+                        <span className="tg-chat-time">
+                          {dialog.message?.date ? new Date(dialog.message.date * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </span>
+                      </div>
+                      <div className="tg-chat-row">
+                        <span className="tg-last-msg">{dialog.message?.message?.slice(0, 35) || '📎 Mídia'}</span>
+                        {dialog.unreadCount > 0 && <span className="tg-unread-badge">{dialog.unreadCount}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Painel direito: área de chat */}
+            <div className="tg-chat-view">
+              {selectedTgChat ? (
+                <>
+                  <div className="tg-chat-header">
+                    <div className="tg-avatar">{(selectedTgChat.name || '?')[0]}</div>
+                    <div>
+                      <p className="tg-chat-name">{selectedTgChat.name}</p>
+                    </div>
+                  </div>
+                  <div className="tg-messages-area">
+                    {tgMessages.map((msg, i) => (
+                      msg.message ? (
+                        <div key={i} className={`tg-bubble ${msg.out ? 'out' : 'in'}`}>
+                          <p>{msg.message}</p>
+                          <span className="tg-bubble-time">
+                            {new Date(msg.date * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      ) : null
+                    ))}
+                    <div ref={tgMessagesEndRef} />
+                  </div>
+                  <div className="tg-input-bar">
+                    <input
+                      className="tg-input"
+                      placeholder="Digite uma mensagem..."
+                      value={tgInput}
+                      onChange={(e) => setTgInput(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter' && tgInput.trim()) {
+                          const text = tgInput;
+                          setTgInput('');
+                          await sendTelegramMessage(selectedTgChat.entity, text);
+                          const msgs = await getChatMessages(selectedTgChat.entity, 50);
+                          setTgMessages(msgs);
+                          setTimeout(() => tgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                        }
+                      }}
+                    />
+                    <button className="tg-send-btn" onClick={async () => {
+                      if (!tgInput.trim()) return;
+                      const text = tgInput;
+                      setTgInput('');
+                      await sendTelegramMessage(selectedTgChat.entity, text);
+                      const msgs = await getChatMessages(selectedTgChat.entity, 50);
+                      setTgMessages(msgs);
+                      setTimeout(() => tgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                    }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="tg-empty-state">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                  <p>Selecione uma conversa para começar</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
           <div className="tab-view">
             <div className="tab-header-flex">
               <h2>Conectar Telegram</h2>
-              <span className={`status-badge-${telegramStatus}`}>
-                {telegramStatus === 'connected' ? 'Conectado' : 'Desconectado'}
-              </span>
+              <span className="status-badge-disconnected">Desconectado</span>
             </div>
-            
             <div className="integration-container">
               <div className="integration-card-main">
                 <div className="integration-info">
@@ -344,7 +470,6 @@ function App() {
                     <p>Conecte seu Telegram para gerenciar chats e automatizar respostas diretamente pelo AllcanceAI.</p>
                   </div>
                 </div>
-
                 <div className="connection-form">
                   {loginMethod === 'phone' ? (
                     telegramStep === 1 ? (
@@ -352,118 +477,72 @@ function App() {
                         <div className="input-field-group">
                           <label>Número de Telefone</label>
                           <div className="input-wrapper-saas">
-                            <input
-                              type="tel"
-                              placeholder="+55 11 99999-9999"
-                              value={phoneNumber}
-                              onChange={(e) => setPhoneNumber(e.target.value)}
-                            />
+                            <input type="tel" placeholder="+55 11 99999-9999" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
                           </div>
                         </div>
                         {telegramError && <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.5rem' }}>{telegramError}</p>}
-                        <button
-                          className="action-btn-primary"
-                          disabled={telegramLoading || !phoneNumber}
-                          onClick={async () => {
-                            setTelegramLoading(true);
-                            setTelegramError('');
-                            try {
-                              const hash = await sendPhoneCode(phoneNumber);
-                              setPhoneCodeHash(hash);
-                              setVerificationCode('');
-                              setTelegramStep(2);
-                            } catch (e) {
-                              setTelegramError('Erro ao enviar o código. Verifique o número.');
-                            } finally {
-                              setTelegramLoading(false);
-                            }
-                          }}
-                        >
+                        <button className="action-btn-primary" disabled={telegramLoading || !phoneNumber} onClick={async () => {
+                          setTelegramLoading(true); setTelegramError('');
+                          try { const hash = await sendPhoneCode(phoneNumber); setPhoneCodeHash(hash); setVerificationCode(''); setTelegramStep(2); }
+                          catch (e) { setTelegramError('Erro ao enviar. Verifique o número.'); }
+                          finally { setTelegramLoading(false); }
+                        }}>
                           {telegramLoading ? 'Enviando...' : 'Enviar Código de Acesso'}
                         </button>
                         <div className="auth-divider-saas"><span>OU</span></div>
-                        <button className="secondary-option-btn" onClick={() => setLoginMethod('qr')}>
-                          Entrar via QR Code
-                        </button>
+                        <button className="secondary-option-btn" onClick={() => setLoginMethod('qr')}>Entrar via QR Code</button>
                       </>
                     ) : (
                       <>
-                        <div className="input-field-group code-field">
+                        <div className="input-field-group">
                           <label>Código de Verificação</label>
                           <div className="input-wrapper-saas">
-                            <input
-                              type="text"
-                              placeholder="00000"
-                              value={verificationCode}
-                              onChange={(e) => setVerificationCode(e.target.value)}
-                              autoFocus
-                            />
+                            <input type="text" placeholder="00000" value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} autoFocus />
                           </div>
                           <p className="input-hint">Código enviado para {phoneNumber}</p>
                         </div>
                         {telegramError && <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.5rem' }}>{telegramError}</p>}
-                        <button
-                          className="action-btn-primary"
-                          disabled={telegramLoading || !verificationCode}
-                          onClick={async () => {
-                            setTelegramLoading(true);
-                            setTelegramError('');
-                            try {
-                              await verifyPhoneCode(phoneNumber, phoneCodeHash, verificationCode, (_, me) => {
-                                setTelegramStatus('connected');
-                                setTelegramUser(me);
-                              });
-                            } catch (e) {
-                              setTelegramError('Código inválido. Tente novamente.');
-                            } finally {
-                              setTelegramLoading(false);
-                            }
-                          }}
-                        >
+                        <button className="action-btn-primary" disabled={telegramLoading || !verificationCode} onClick={async () => {
+                          setTelegramLoading(true); setTelegramError('');
+                          try { await verifyPhoneCode(phoneNumber, phoneCodeHash, verificationCode, (_, me) => { setTelegramStatus('connected'); setTelegramUser(me); }); }
+                          catch (e) { setTelegramError('Código inválido. Tente novamente.'); }
+                          finally { setTelegramLoading(false); }
+                        }}>
                           {telegramLoading ? 'Verificando...' : 'Verificar Código'}
                         </button>
-                        <button className="back-link-btn" onClick={() => { setTelegramStep(1); setTelegramError(''); }}>
-                          Alterar número de telefone
-                        </button>
+                        <button className="back-link-btn" onClick={() => { setTelegramStep(1); setTelegramError(''); }}>Alterar número</button>
                       </>
                     )
                   ) : (
                     <div className="qr-container-wrapper">
                       <div className="qr-box">
-                        {qrCodeLink ? (
-                          <QRCodeCanvas value={qrCodeLink} size={180} />
-                        ) : (
-                          <div className="qr-placeholder">
-                             <div className="pro-spinner"></div>
-                             <span className="loading-text-saas">Aguardando...</span>
-                          </div>
+                        {qrCodeLink ? <QRCodeCanvas value={qrCodeLink} size={180} /> : (
+                          <div className="qr-placeholder"><div className="pro-spinner"></div><span className="loading-text-saas">Aguardando...</span></div>
                         )}
                       </div>
-                      <p className="qr-hint">Abra o Telegram no seu celular e vá em <strong>Configurações {" > "} Dispositivos {" > "} Conectar Dispositivo</strong></p>
-                      <button className="back-link-btn" onClick={() => setLoginMethod('phone')}>
-                        Entrar com número de telefone
-                      </button>
+                      <p className="qr-hint">Abra o Telegram {" > "} Configurações {" > "} Dispositivos {" > "} Conectar Dispositivo</p>
+                      <button className="back-link-btn" onClick={() => setLoginMethod('phone')}>Entrar com número de telefone</button>
                     </div>
                   )}
                 </div>
               </div>
-
               <div className="integration-guide">
                 <h4>Como funciona?</h4>
                 <ol>
-                  <li>Insira seu número de telefone com o código do país.</li>
-                  <li>Você receberá um código diretamente no seu aplicativo do Telegram.</li>
-                  <li>Insira o código aqui para validar a conexão.</li>
-                  <li>Pronto! Suas mensagens serão sincronizadas com o AllcanceAI.</li>
+                  <li>Insira seu número com código do país.</li>
+                  <li>Você receberá um código no aplicativo Telegram.</li>
+                  <li>Insira o código para validar a conexão.</li>
+                  <li>Pronto! Suas mensagens serão sincronizadas.</li>
                 </ol>
                 <div className="guide-alert">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   <span>Seus dados são protegidos por criptografia de ponta a ponta.</span>
                 </div>
               </div>
             </div>
           </div>
         )
+
       case 'arquivos': return <div className="tab-view"><h2>Arquivos</h2><div className="notes-container"><textarea placeholder="..." className="notepad" /></div></div>
       case 'instruções': return <div className="tab-view"><h2>Instruções</h2></div>
       case 'configurações':

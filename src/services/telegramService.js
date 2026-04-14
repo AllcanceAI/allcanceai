@@ -97,3 +97,26 @@ export const verifyPhoneCode = async (phoneNumber, phoneCodeHash, code, onSucces
   localStorage.setItem(SESSION_KEY, sessionString);
   onSuccess(sessionString, user);
 };
+
+// Busca lista de conversas (dialogs)
+export const getDialogs = async (limit = 30) => {
+  const telegramClient = getTelegramClient();
+  if (!telegramClient) return [];
+  const dialogs = await telegramClient.getDialogs({ limit });
+  return dialogs;
+};
+
+// Busca mensagens de um chat
+export const getChatMessages = async (entity, limit = 50) => {
+  const telegramClient = getTelegramClient();
+  if (!telegramClient) return [];
+  const messages = await telegramClient.getMessages(entity, { limit });
+  return messages.reverse(); // Mais antigas primeiro
+};
+
+// Envia uma mensagem
+export const sendTelegramMessage = async (entity, text) => {
+  const telegramClient = getTelegramClient();
+  if (!telegramClient) throw new Error('Client not initialized');
+  await telegramClient.sendMessage(entity, { message: text });
+};

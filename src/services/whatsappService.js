@@ -4,50 +4,137 @@
  * Preparada para replicar a estrutura do Telegram CRM.
  */
 
-// Mock de dados para visualização inicial (Estrutura idêntica ao Telegram)
-const mockDialogs = [
-  {
-    id: "wa_1",
-    name: "João Evolution",
-    message: { message: "Olá, como funciona a API?", date: Math.floor(Date.now()/1000) },
-    unreadCount: 2,
-    entity: { id: "wa_1" }
-  },
-  {
-    id: "wa_2",
-    name: "Suporte Evolution",
-    message: { message: "Sua instância está ativa!", date: Math.floor(Date.now()/1000) - 3600 },
-    unreadCount: 0,
-    entity: { id: "wa_2" }
+const BASE_URL = import.meta.env.VITE_EVOLUTION_URL;
+const GLOBAL_KEY = import.meta.env.VITE_EVOLUTION_GLOBAL_KEY;
+
+// Headers padrão para a Evolution API
+const getHeaders = (instanceKey) => ({
+  'Content-Type': 'application/json',
+  'apikey': instanceKey || GLOBAL_KEY
+});
+
+/**
+ * Lista todas as instâncias da Evolution API
+ */
+export const fetchWaInstances = async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/instance/fetchInstances`, {
+      method: 'GET',
+      headers: getHeaders()
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Erro ao listar instâncias:", error);
+    return [];
   }
-];
-
-export const getWaDialogs = async () => {
-  // Simula delay de rede
-  return new Promise((res) => setTimeout(() => res(mockDialogs), 800));
 };
 
-export const getWaMessages = async (contactId) => {
-  return [
-    { out: false, message: "Olá, gostaria de saber mais sobre a Evolution API", date: Math.floor(Date.now()/1000) - 100 },
-    { out: true, message: "Com certeza! Em que posso ajudar?", date: Math.floor(Date.now()/1000) - 50 }
-  ];
+/**
+ * Cria uma nova instância na Evolution API para o usuário
+ */
+export const createWaInstance = async (instanceName) => {
+  try {
+    const response = await fetch(`${BASE_URL}/instance/create`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        instanceName,
+        qrcode: true
+      })
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Erro ao criar instância:", error);
+    return null;
+  }
 };
 
-export const sendWaMessage = async (contactId, text) => {
-  console.log(`[Evolution API] Enviando para ${contactId}: ${text}`);
-  return true;
+/**
+ * Busca o QR Code de uma instância específica
+ */
+export const getWaQrCode = async (instanceName) => {
+  try {
+    const response = await fetch(`${BASE_URL}/instance/connect/${instanceName}`, {
+      method: 'GET',
+      headers: getHeaders()
+    });
+    const data = await response.json();
+    // A Evolution retorna o base64 ou o link do QR
+    return data.base64 || data.code; 
+  } catch (error) {
+    console.error("Erro ao buscar QR Code:", error);
+    return null;
+  }
 };
 
-// Placeholder para conexão Evolution
-export const connectEvolution = async (apiKey, instanceName) => {
-  console.log("Conectando à Evolution API...");
-  return { status: "connected" };
+/**
+ * Busca as conversas (Chats) da instância
+ */
+export const getWaDialogs = async (instanceName) => {
+  try {
+    const response = await fetch(`${BASE_URL}/chat/findChats/${instanceName}`, {
+      method: 'GET',
+      headers: getHeaders()
+    });
+    const data = await response.json();
+    // Mapeia o formato da Evolution para o formato do nosso CRM
+    return (data || []).map(chat => ({
+      id: chat.id,
+      name: chat.name || chat.id.split('@')[0],
+      unreadCount: chat.unreadCount || 0,
+      message: {
+        message: chat.lastMessage?.message?.conversation || "Mídia/Outro",
+        date: chat.lastMessage?.messageTimestamp
+      }
+    }));
+  } catch (error) {
+    console.error("Erro ao buscar chats:", error);
+    return [];
+  }
 };
 
-export const getWaQrCode = async () => {
-  return new Promise((res) => {
-    // Simulando o link de pareamento da Evolution API
-    setTimeout(() => res("https://evolution-api.com/pairing-qr-mock"), 1500);
-  });
+/**
+ * Envia uma mensagem de texto
+ */
+export const sendWaMessage = async (instanceName, remoteJid, text) => {
+  try {
+    await fetch(`${BASE_URL}/message/sendText/${instanceName}`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        number: remoteJid,
+        options: { delay: 1200, presence: "composing" },
+        textMessage: { text }
+      })
+    });
+    return true;
+  } catch (error) {
+    console.error("Erro ao enviar mensagem:", error);
+    return false;
+  }
+};
+
+/**
+ * Busca histórico de mensagens de um chat
+ */
+export const getWaMessages = async (instanceName, remoteJid) => {
+  try {
+    const response = await fetch(`${BASE_URL}/chat/findMessages/${instanceName}`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        where: { remoteJid },
+        take: 50
+      })
+    });
+    const data = await response.json();
+    return (data.messages || []).map(m => ({
+      message: m.message?.conversation || "",
+      out: m.key.fromMe,
+      date: m.messageTimestamp
+    })).reverse();
+  } catch (error) {
+    console.error("Erro ao buscar mensagens:", error);
+    return [];
+  }
 };

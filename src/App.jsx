@@ -3,7 +3,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode, getDialogs, getChatMessages, sendTelegramMessage, downloadMediaAsUrl, getProfilePhotoUrl, markChatAsRead, listenToNewMessages } from './services/telegramService'
-import { getWaDialogs, getWaMessages, sendWaMessage } from './services/whatsappService'
+import { getWaDialogs, getWaMessages, sendWaMessage, getWaQrCode, createWaInstance, fetchWaInstances } from './services/whatsappService'
 import { generateAiResponse } from './services/aiService'
 import { useCRM } from './components/crm/CRMContext'
 import RightSidebar from './components/crm/RightSidebar'
@@ -39,26 +39,49 @@ function App() {
   const [waInput, setWaInput] = useState('')
   const [waStatus, setWaStatus] = useState('disconnected') // Mocking as connected for now
   const [waQrCode, setWaQrCode] = useState('')
+  const [waInstanceName, setWaInstanceName] = useState('')
   const [waLoading, setWaLoading] = useState(false)
   const waMessagesEndRef = useRef(null)
 
+  // Inicializa Instância WhatsApp baseada no Usuário
+  useEffect(() => {
+    if (activeTab === 'whatsapp' && userId && !waInstanceName) {
+      const name = `allcance_${userId.substring(0, 8)}`;
+      setWaInstanceName(name);
+      
+      // Verifica se a instância já existe e está conectada
+      fetchWaInstances().then(instances => {
+        const myInstance = (instances || []).find(i => i.instanceName === name);
+        if (myInstance && myInstance.status === 'open') {
+          console.log("✅ Instância já está conectada.");
+          setWaStatus('connected');
+        } else {
+          console.log("⚡ Criando ou reconectando instância...");
+          createWaInstance(name).then(res => {
+            console.log("Instância Evolution carregada:", res);
+          });
+        }
+      });
+    }
+  }, [activeTab, userId, waInstanceName]);
+
   // Carrega QR Code do WhatsApp
   useEffect(() => {
-    if (activeTab === 'whatsapp' && waStatus === 'disconnected' && !waQrCode) {
-      getWaQrCode().then(url => setWaQrCode(url));
+    if (activeTab === 'whatsapp' && waStatus === 'disconnected' && waInstanceName && !waQrCode) {
+      getWaQrCode(waInstanceName).then(url => setWaQrCode(url));
     }
-  }, [activeTab, waStatus, waQrCode]);
+  }, [activeTab, waStatus, waInstanceName, waQrCode]);
 
   // Carrega WhatsApp Dialogs
   useEffect(() => {
-    if (activeTab === 'whatsapp' && waStatus === 'connected') {
+    if (activeTab === 'whatsapp' && waStatus === 'connected' && waInstanceName) {
       setWaLoading(true);
-      getWaDialogs().then(dialogs => {
+      getWaDialogs(waInstanceName).then(dialogs => {
         setWaDialogs(dialogs);
         setWaLoading(false);
       });
     }
-  }, [activeTab, waStatus]);
+  }, [activeTab, waStatus, waInstanceName]);
   
   const handleCrmMenu = (e, contactId, entity) => {
     e.preventDefault();
@@ -469,8 +492,8 @@ function App() {
             onSendMessage={async () => {
               if (!waInput.trim() || !selectedWaChat) return;
               const text = waInput; setWaInput('');
-              await sendWaMessage(selectedWaChat.id, text);
-              const msgs = await getWaMessages(selectedWaChat.id);
+              await sendWaMessage(waInstanceName, selectedWaChat.id, text);
+              const msgs = await getWaMessages(waInstanceName, selectedWaChat.id);
               setWaMessages(msgs);
               setTimeout(() => waMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
             }}
@@ -478,7 +501,7 @@ function App() {
               if (!chat) { setSelectedWaChat(null); return; }
               setSelectedWaChat(chat);
               setWaLoading(true);
-              const msgs = await getWaMessages(chat.id);
+              const msgs = await getWaMessages(waInstanceName, chat.id);
               setWaMessages(msgs);
               setWaLoading(false);
               setTimeout(() => waMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);

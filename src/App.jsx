@@ -3,6 +3,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode, getDialogs, getChatMessages, sendTelegramMessage, downloadMediaAsUrl, getProfilePhotoUrl, markChatAsRead, listenToNewMessages } from './services/telegramService'
+import { getWaDialogs, getWaMessages, sendWaMessage } from './services/whatsappService'
 import { generateAiResponse } from './services/aiService'
 import { useCRM } from './components/crm/CRMContext'
 import RightSidebar from './components/crm/RightSidebar'
@@ -30,8 +31,25 @@ function App() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [crmMenu, setCrmMenu] = useState({ x: 0, y: 0, visible: false, contactId: null, entity: null });
 
-  
-  
+  // WhatsApp States
+  const [waDialogs, setWaDialogs] = useState([])
+  const [selectedWaChat, setSelectedWaChat] = useState(null)
+  const [waMessages, setWaMessages] = useState([])
+  const [waInput, setWaInput] = useState('')
+  const [waStatus, setWaStatus] = useState('connected') // Mocking as connected for now
+  const [waLoading, setWaLoading] = useState(false)
+  const waMessagesEndRef = useRef(null)
+
+  // Carrega WhatsApp Dialogs
+  useEffect(() => {
+    if (activeTab === 'whatsapp' && waStatus === 'connected') {
+      setWaLoading(true);
+      getWaDialogs().then(dialogs => {
+        setWaDialogs(dialogs);
+        setWaLoading(false);
+      });
+    }
+  }, [activeTab, waStatus]);
   
   const handleCrmMenu = (e, contactId, entity) => {
     e.preventDefault();
@@ -430,321 +448,109 @@ function App() {
             </div>
           </div>
         )
+      case 'whatsapp':
+        return (
+          <ChannelUI 
+            platform="wa"
+            dialogs={waDialogs}
+            selectedChat={selectedWaChat}
+            messages={waMessages}
+            inputValue={waInput}
+            setInputValue={setWaInput}
+            onSendMessage={async () => {
+              if (!waInput.trim() || !selectedWaChat) return;
+              const text = waInput; setWaInput('');
+              await sendWaMessage(selectedWaChat.id, text);
+              const msgs = await getWaMessages(selectedWaChat.id);
+              setWaMessages(msgs);
+              setTimeout(() => waMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+            }}
+            onSelectChat={async (chat) => {
+              if (!chat) { setSelectedWaChat(null); return; }
+              setSelectedWaChat(chat);
+              setWaLoading(true);
+              const msgs = await getWaMessages(chat.id);
+              setWaMessages(msgs);
+              setWaLoading(false);
+              setTimeout(() => waMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+            }}
+            loadingChats={waLoading}
+            avatarUrls={{}}
+            onReturn={() => setActiveTab('agente')}
+            onDisconnect={() => { setWaStatus('disconnected'); setWaDialogs([]); setSelectedWaChat(null); }}
+            tags={tags}
+            contactTags={contactTags}
+            selectedFilterTag={selectedFilterTag}
+            setSelectedFilterTag={setSelectedFilterTag}
+            filterOpen={filterOpen}
+            setFilterOpen={setFilterOpen}
+            handleCrmMenu={handleCrmMenu}
+            globalAiEnabled={globalAiEnabled}
+            toggleGlobalAi={toggleGlobalAi}
+            disabledAiChatIds={disabledAiChatIds}
+            toggleChatAi={toggleChatAi}
+            messagesEndRef={waMessagesEndRef}
+            archivedIds={archivedIds}
+            RightSidebar={RightSidebar}
+            CrmMenu={CrmMenu}
+            crmMenuState={crmMenu}
+            closeCrmMenu={() => setCrmMenu({ ...crmMenu, visible: false })}
+          />
+        )
+
       case 'telegram':
         return telegramStatus === 'connected' ? (
-          <div className={`tg-interface${tgMobileView === 'chat' ? ' mobile-chat-active' : ''}`}>
-            {/* Painel esquerdo: lista de chats */}
-            <div className="tg-sidebar-panel">
-              <div className="tg-panel-header" style={{ padding: '0.75rem 1rem', height: '64px', display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <button className="tg-return-btn" onClick={() => setActiveTab('agente')} title="Retornar ao Início" style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', width: '36px', height: '36px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-                </button>
-                <div className="tg-user-badge" style={{ display: 'flex', alignItems: 'center' }}>
-                  <div className="tg-avatar-sm" style={{ width: '36px', height: '36px', fontSize: '0.8rem' }}>{telegramUser?.firstName?.[0] || 'T'}</div>
-                </div>
-                <div className="tg-filter-area" style={{ flex: 1, marginLeft: '0.25rem', position: 'relative' }}>
-                   <div 
-                     className={`tg-custom-filter ${filterOpen ? 'open' : ''}`}
-                     onClick={() => setFilterOpen(!filterOpen)}
-                   >
-                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                       {selectedFilterTag !== 'all' && (
-                         <div className="tag-color-dot" style={{ backgroundColor: tags.find(t => t.id === selectedFilterTag)?.color }}></div>
-                       )}
-                       <span>{selectedFilterTag === 'all' ? 'Filtrar por Tag' : tags.find(t => t.id === selectedFilterTag)?.name}</span>
-                     </div>
-                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ transform: filterOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
-                   </div>
-                   
-                   {filterOpen && (
-                     <>
-                       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} onClick={() => setFilterOpen(false)} />
-                       <div className="tg-filter-dropdown">
-                         <div className="tg-filter-option" onClick={() => { setSelectedFilterTag('all'); setFilterOpen(false); }}>
-                           Todas as Mensagens
-                         </div>
-                         {tags.map(tag => (
-                           <div key={tag.id} className="tg-filter-option" onClick={() => { setSelectedFilterTag(tag.id); setFilterOpen(false); }}>
-                             <div className="tag-color-dot" style={{ backgroundColor: tag.color }}></div>
-                             {tag.name}
-                           </div>
-                         ))}
-                       </div>
-                     </>
-                   )}
-                </div>
-                <button className="tg-disconnect-btn" title="Desconectar" onClick={() => {
-                  import('./services/telegramService').then(m => m.clearSession());
-                  setTelegramStatus('disconnected'); setTgDialogs([]); setSelectedTgChat(null);
-                }} style={{ padding: '0.4rem', background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer' }}>
-                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                </button>
-              </div>
-
-              {/* Mobile AI Quick Control */}
-              <div className="mobile-only-ai-toggle" style={{ padding: '0.75rem 1rem', display: 'none' }}>
-                <div 
-                  onClick={toggleGlobalAi}
-                  style={{
-                    background: globalAiEnabled ? 'rgba(0,136,204,0.1)' : 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${globalAiEnabled ? 'rgba(0,136,204,0.3)' : 'rgba(255,255,255,0.05)'}`,
-                    borderRadius: '12px',
-                    padding: '0.75rem 1rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ 
-                      width: '32px', 
-                      height: '32px', 
-                      borderRadius: '8px', 
-                      background: globalAiEnabled ? '#0088cc' : '#222',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: globalAiEnabled ? '0 0 10px rgba(0,136,204,0.3)' : 'none'
-                    }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#fff' }}>Inteligência Artificial</div>
-                      <div style={{ fontSize: '0.6rem', color: globalAiEnabled ? '#0088cc' : '#555', fontWeight: '700' }}>
-                        {globalAiEnabled ? 'SISTEMA ATIVO' : 'SISTEMA DESATIVADO'}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ 
-                    width: '36px', 
-                    height: '20px', 
-                    borderRadius: '10px', 
-                    background: globalAiEnabled ? '#0088cc' : '#333',
-                    position: 'relative'
-                  }}>
-                    <div style={{ 
-                      position: 'absolute', 
-                      top: '2px', 
-                      left: globalAiEnabled ? '18px' : '2px', 
-                      width: '16px', 
-                      height: '16px', 
-                      borderRadius: '50%', 
-                      background: '#fff',
-                      transition: 'all 0.3s'
-                    }} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="tg-chat-list">
-                {tgLoadingChats ? (
-                  <div className="tg-loading"><div className="pro-spinner"></div></div>
-                ) : tgDialogs
-                  .filter(d => !archivedIds.includes(d.id?.toString()))
-                  .filter(d => selectedFilterTag === 'all' || (contactTags[d.id?.toString()] || []).includes(selectedFilterTag))
-                  .map((dialog, i) => {
-                    const contactId = dialog.id?.toString();
-                    const avatarUrl = tgAvatarUrls[contactId];
-                    const activeTags = contactTags[contactId] || [];
-                    const lastTagId = activeTags[activeTags.length - 1];
-                    const lastTag = tags.find(t => t.id === lastTagId);
-
-                    return (
-                      <div key={i}
-                        className={`tg-chat-item ${selectedTgChat === dialog ? 'active' : ''} ${lastTag ? 'has-tag' : ''}`}
-                        onContextMenu={(e) => handleCrmMenu(e, contactId, dialog.entity)}
-                        onClick={async () => {
-                          setSelectedTgChat(dialog);
-                          setTgMobileView('chat');
-                          setTgMessages([]);
-                          markChatAsRead(dialog.entity);
-                          setTgDialogs(prev => prev.map(d => d.id === dialog.id ? { ...d, unreadCount: 0 } : d));
-                          const msgs = await getChatMessages(dialog.entity, 50);
-                          setTgMessages(msgs);
-                          setTimeout(() => tgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-                        }}
-                      >
-                        {lastTag && (
-                          <div className="tag-border-indicator" style={{ backgroundColor: lastTag.color }}></div>
-                        )}
-                        <div className="tg-chat-content-flex">
-                          {avatarUrl ? (
-                            <img src={avatarUrl} alt="" className="tg-avatar tg-avatar-photo" />
-                          ) : (
-                            <div className="tg-avatar">{(dialog.name || '?')[0]}</div>
-                          )}
-                          <div className="tg-chat-details">
-                            <div className="tg-chat-top-row">
-                              <span className="tg-chat-name">{dialog.name || 'Sem nome'}</span>
-                              <span className="tg-chat-time">
-                                {dialog.message?.date ? new Date(dialog.message.date * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
-                              </span>
-                            </div>
-                            <div className="tg-chat-bottom-row">
-                              <span className="tg-last-msg">
-                                {dialog.message?.message?.slice(0, 32) || (dialog.message?.media ? '📎 Mídia' : '')}
-                              </span>
-                              <div className="tg-indicators">
-                                {dialog.unreadCount > 0 && <span className="tg-unread-badge">{dialog.unreadCount}</span>}
-                                <button className="tg-item-more-btn" onClick={(e) => handleCrmMenu(e, contactId, dialog.entity)}>⋮</button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                })}
-              </div>
-            </div>
-
-            {/* Painel direito: área de chat */}
-            <div className="tg-chat-view">
-              {selectedTgChat ? (
-                <>
-                  <div className="tg-chat-header">
-                    <button className="tg-back-btn" onClick={() => setTgMobileView('list')}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-                    </button>
-                    {tgAvatarUrls[selectedTgChat.entity?.id?.toString()] ? (
-                      <img src={tgAvatarUrls[selectedTgChat.entity?.id?.toString()]} alt="" className="tg-avatar tg-avatar-photo" />
-                    ) : (
-                      <div className="tg-avatar">{(selectedTgChat.name || '?')[0]}</div>
-                    )}
-                    <p className="tg-chat-name">{selectedTgChat.name}</p>
-                    
-                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      {/* Botão de Piloto Automático por Chat (Texto Dinâmico) */}
-                      <button 
-                        onClick={() => toggleChatAi(selectedTgChat.id?.toString())}
-                        style={{
-                          background: disabledAiChatIds.includes(selectedTgChat.id?.toString()) ? 'rgba(255,255,255,0.03)' : 'rgba(0,136,204,0.15)',
-                          border: `1px solid ${disabledAiChatIds.includes(selectedTgChat.id?.toString()) ? 'rgba(255,255,255,0.1)' : 'rgba(0,136,204,0.4)'}`,
-                          borderRadius: '8px',
-                          padding: '0.4rem 0.85rem',
-                          color: disabledAiChatIds.includes(selectedTgChat.id?.toString()) ? '#888' : '#0088cc',
-                          fontSize: '0.7rem',
-                          fontWeight: '700',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                          cursor: 'pointer',
-                          transition: 'all 0.3s ease',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          boxShadow: disabledAiChatIds.includes(selectedTgChat.id?.toString()) ? 'none' : '0 0 10px rgba(0,136,204,0.2)'
-                        }}
-                      >
-                        <div style={{ 
-                          width: '6px', 
-                          height: '6px', 
-                          borderRadius: '50%', 
-                          background: disabledAiChatIds.includes(selectedTgChat.id?.toString()) ? '#444' : '#0088cc',
-                          boxShadow: disabledAiChatIds.includes(selectedTgChat.id?.toString()) ? 'none' : '0 0 5px #0088cc'
-                        }} />
-                        {disabledAiChatIds.includes(selectedTgChat.id?.toString()) ? 'Ativar IA' : 'IA Ativa'}
-                      </button>
-
-                      <div 
-                        className="tg-item-more" 
-                        style={{ padding: '0.5rem', cursor: 'pointer' }}
-                        onClick={(e) => handleCrmMenu(e, selectedTgChat.id?.toString(), selectedTgChat.entity)}
-                      >⋮</div>
-                    </div>
-                  </div>
-                  <div className="tg-messages-area">
-                    {tgMessages.map((msg, i) => {
-                      const hasText = !!msg.message;
-                      const hasMedia = !!msg.media;
-                      const mediaClass = msg.media?.className;
-                      const isPhoto = mediaClass === 'MessageMediaPhoto';
-                      const isVideo = mediaClass === 'MessageMediaDocument' && msg.media?.document?.mimeType?.startsWith?.('video');
-                      const msgId = msg.id?.toString();
-                      const mediaUrl = tgMediaUrls[msgId];
-                      if (!hasText && !hasMedia) return null;
-                      return (
-                        <div key={i} className={`tg-bubble ${msg.out ? 'out' : 'in'}`}>
-                          {hasText && <p>{msg.message}</p>}
-                          {hasMedia && (
-                            <div className="tg-media-wrapper">
-                              {!mediaUrl && (
-                                <button className="tg-media-load-btn" onClick={async () => {
-                                  const url = await downloadMediaAsUrl(msg);
-                                  if (url) setTgMediaUrls(prev => ({ ...prev, [msgId]: url }));
-                                }}>
-                                  {isPhoto ? '📷 Ver Foto' : isVideo ? '🎥 Ver Vídeo' : '📎 Ver Arquivo'}
-                                </button>
-                              )}
-                              {mediaUrl && isPhoto && (
-                                <img src={mediaUrl} alt="foto" className="tg-media-img" onClick={() => window.open(mediaUrl, '_blank')} />
-                              )}
-                              {mediaUrl && !isPhoto && (
-                                <a href={mediaUrl} download className="tg-media-load-btn">📥 Download</a>
-                              )}
-                              {!isPhoto && (
-                                <div className="tg-media-overlay-hint">
-                                  <span>Para visualizar mídia completa, abra o Telegram oficial</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          <span className="tg-bubble-time">
-                            {new Date(msg.date * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      );
-                    })}
-                    <div ref={tgMessagesEndRef} />
-                  </div>
-                  <div className="tg-input-bar">
-                    <input className="tg-input" placeholder="Digite uma mensagem..." value={tgInput}
-                      onChange={(e) => setTgInput(e.target.value)}
-                      onKeyDown={async (e) => {
-                        if (e.key === 'Enter' && tgInput.trim()) {
-                          const text = tgInput; setTgInput('');
-                          await sendTelegramMessage(selectedTgChat.entity, text);
-                          const msgs = await getChatMessages(selectedTgChat.entity, 50);
-                          setTgMessages(msgs);
-                          setTimeout(() => tgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-                        }
-                      }}
-                    />
-                    <button className="tg-send-btn" onClick={async () => {
-                      if (!tgInput.trim()) return;
-                      const text = tgInput; setTgInput('');
-                      await sendTelegramMessage(selectedTgChat.entity, text);
-                      const msgs = await getChatMessages(selectedTgChat.entity, 50);
-                      setTgMessages(msgs);
-                      setTimeout(() => tgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-                    }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="tg-empty-state">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-                  <p>Selecione uma conversa para começar</p>
-                </div>
-              )}
-            </div>
-            
-            {/* Painel lateral de CRM */}
-            <RightSidebar activeChat={selectedTgChat} />
-
-            {/* Menu de Contexto CRM */}
-            {crmMenu.visible && (
-              <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1999 }} onClick={() => setCrmMenu({ ...crmMenu, visible: false })}>
-                <CrmMenu 
-                  x={crmMenu.x} 
-                  y={crmMenu.y} 
-                  contactId={crmMenu.contactId} 
-                  entity={crmMenu.entity}
-                  onClose={() => setCrmMenu({ ...crmMenu, visible: false })} 
-                />
-              </div>
-            )}
-          </div>
+          <ChannelUI 
+            platform="tg"
+            dialogs={tgDialogs}
+            selectedChat={selectedTgChat}
+            messages={tgMessages}
+            inputValue={tgInput}
+            setInputValue={setTgInput}
+            onSendMessage={async () => {
+              if (!tgInput.trim() || !selectedTgChat) return;
+              const text = tgInput; setTgInput('');
+              await sendTelegramMessage(selectedTgChat.entity, text);
+              const msgs = await getChatMessages(selectedTgChat.entity, 50);
+              setTgMessages(msgs);
+              setTimeout(() => tgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+            }}
+            onSelectChat={async (chat) => {
+              if (!chat) { setSelectedTgChat(null); return; }
+              setSelectedTgChat(chat);
+              setTgMobileView('chat');
+              setTgMessages([]);
+              markChatAsRead(chat.entity);
+              setTgDialogs(prev => prev.map(d => d.id === chat.id ? { ...d, unreadCount: 0 } : d));
+              const msgs = await getChatMessages(chat.entity, 50);
+              setTgMessages(msgs);
+              setTimeout(() => tgMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+            }}
+            loadingChats={tgLoadingChats}
+            avatarUrls={tgAvatarUrls}
+            onReturn={() => setActiveTab('agente')}
+            onDisconnect={() => {
+              import('./services/telegramService').then(m => m.clearSession());
+              setTelegramStatus('disconnected'); setTgDialogs([]); setSelectedTgChat(null);
+            }}
+            tags={tags}
+            contactTags={contactTags}
+            selectedFilterTag={selectedFilterTag}
+            setSelectedFilterTag={setSelectedFilterTag}
+            filterOpen={filterOpen}
+            setFilterOpen={setFilterOpen}
+            handleCrmMenu={handleCrmMenu}
+            globalAiEnabled={globalAiEnabled}
+            toggleGlobalAi={toggleGlobalAi}
+            disabledAiChatIds={disabledAiChatIds}
+            toggleChatAi={toggleChatAi}
+            messagesEndRef={tgMessagesEndRef}
+            archivedIds={archivedIds}
+            RightSidebar={RightSidebar}
+            CrmMenu={CrmMenu}
+            crmMenuState={crmMenu}
+            closeCrmMenu={() => setCrmMenu({ ...crmMenu, visible: false })}
+          />
         ) : (
           <div className="tab-view">
             <div className="tab-header-flex">
@@ -879,7 +685,7 @@ function App() {
   const getUsageColor = () => { if (usagePercent > 85) return '#ef4444'; if (usagePercent > 60) return '#f59e0b'; return '#10b981'; }
 
   return (
-    <div className={`layout ${activeTab === 'telegram' ? 'hide-sidebar' : ''}`}>
+    <div className={`layout ${(activeTab === 'telegram' || activeTab === 'whatsapp') ? 'hide-sidebar' : ''}`}>
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header-main">

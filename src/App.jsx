@@ -480,6 +480,63 @@ function App() {
                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                 </button>
               </div>
+
+              {/* Mobile AI Quick Control */}
+              <div className="mobile-only-ai-toggle" style={{ padding: '0.75rem 1rem', display: 'none' }}>
+                <div 
+                  onClick={toggleGlobalAi}
+                  style={{
+                    background: globalAiEnabled ? 'rgba(0,136,204,0.1)' : 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${globalAiEnabled ? 'rgba(0,136,204,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                    borderRadius: '12px',
+                    padding: '0.75rem 1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ 
+                      width: '32px', 
+                      height: '32px', 
+                      borderRadius: '8px', 
+                      background: globalAiEnabled ? '#0088cc' : '#222',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: globalAiEnabled ? '0 0 10px rgba(0,136,204,0.3)' : 'none'
+                    }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#fff' }}>Inteligência Artificial</div>
+                      <div style={{ fontSize: '0.6rem', color: globalAiEnabled ? '#0088cc' : '#555', fontWeight: '700' }}>
+                        {globalAiEnabled ? 'SISTEMA ATIVO' : 'SISTEMA DESATIVADO'}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ 
+                    width: '36px', 
+                    height: '20px', 
+                    borderRadius: '10px', 
+                    background: globalAiEnabled ? '#0088cc' : '#333',
+                    position: 'relative'
+                  }}>
+                    <div style={{ 
+                      position: 'absolute', 
+                      top: '2px', 
+                      left: globalAiEnabled ? '18px' : '2px', 
+                      width: '16px', 
+                      height: '16px', 
+                      borderRadius: '50%', 
+                      background: '#fff',
+                      transition: 'all 0.3s'
+                    }} />
+                  </div>
+                </div>
+              </div>
+
               <div className="tg-chat-list">
                 {tgLoadingChats ? (
                   <div className="tg-loading"><div className="pro-spinner"></div></div>

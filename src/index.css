@@ -1582,3 +1582,10 @@ body, html, #root {
 }
 .tg-item-more:hover { color: #fff; }
 }
+
+/* --- MOBILE AI TOGGLE --- */
+@media (max-width: 1023px) {
+  .mobile-only-ai-toggle {
+    display: block !important;
+  }
+}

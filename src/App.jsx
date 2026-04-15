@@ -30,31 +30,7 @@ function App() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [crmMenu, setCrmMenu] = useState({ x: 0, y: 0, visible: false, contactId: null, entity: null });
 
-  // --- PILOTO AUTOMÁTICO (GROQ) ---
-  useEffect(() => {
-    if (telegramStatus === 'connected' && globalAiEnabled) {
-      console.log("🤖 Auto-Pilot Ativo. Monitorando mensagens...");
-      listenToNewMessages(async (msg) => {
-        const contactId = msg.peerId?.userId?.toString() || msg.peerId?.chatId?.toString();
-        if (disabledAiChatIds.includes(contactId)) return;
-
-        const text = msg.message;
-        if (!text) return;
-        
-        try {
-          const history = await getChatMessages(msg.peerId, 5);
-          const aiReply = await generateAiResponse(text, history);
-          if (aiReply) {
-            await sendTelegramMessage(msg.peerId, aiReply);
-            if (selectedTgChat && (selectedTgChat.id?.toString() === contactId)) {
-              const updatedMsgs = await getChatMessages(msg.peerId, 50);
-              setTgMessages(updatedMsgs);
-            }
-          }
-        } catch (error) { console.error("🤖 Erro no Auto-Pilot:", error); }
-      });
-    }
-  }, [telegramStatus, globalAiEnabled, disabledAiChatIds, selectedTgChat]);
+  
   
   
   const handleCrmMenu = (e, contactId, entity) => {
@@ -110,6 +86,32 @@ function App() {
   const [tgAvatarUrls, setTgAvatarUrls] = useState({}) // { id: url }
   const [tgMediaUrls, setTgMediaUrls] = useState({}) // { msgId: url }
   const tgMessagesEndRef = useRef(null)
+
+  // --- PILOTO AUTOMÁTICO (GROQ) ---
+  useEffect(() => {
+    if (telegramStatus === 'connected' && globalAiEnabled) {
+      console.log("🤖 Auto-Pilot Ativo. Monitorando mensagens...");
+      listenToNewMessages(async (msg) => {
+        const contactId = msg.peerId?.userId?.toString() || msg.peerId?.chatId?.toString();
+        if (disabledAiChatIds.includes(contactId)) return;
+
+        const text = msg.message;
+        if (!text) return;
+        
+        try {
+          const history = await getChatMessages(msg.peerId, 5);
+          const aiReply = await generateAiResponse(text, history);
+          if (aiReply) {
+            await sendTelegramMessage(msg.peerId, aiReply);
+            if (selectedTgChat && (selectedTgChat.id?.toString() === contactId)) {
+              const updatedMsgs = await getChatMessages(msg.peerId, 50);
+              setTgMessages(updatedMsgs);
+            }
+          }
+        } catch (error) { console.error("🤖 Erro no Auto-Pilot:", error); }
+      });
+    }
+  }, [telegramStatus, globalAiEnabled, disabledAiChatIds, selectedTgChat]);
   
   const [tokenUsage, setTokenUsage] = useState({ 
     monthlyUsed: 0, 

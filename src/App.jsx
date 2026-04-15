@@ -547,8 +547,14 @@ function App() {
                 </div>
                 <div className="connection-form">
                   <div className="qr-container-wrapper">
-                    <div className="qr-box">
-                      {waQrCode ? <QRCodeCanvas value={waQrCode} size={180} /> : (
+                    <div className="qr-box" style={{ background: '#fff', padding: '10px', borderRadius: '12px' }}>
+                      {waQrCode ? (
+                        waQrCode.includes('base64') || waQrCode.startsWith('data:image') ? (
+                          <img src={waQrCode} alt="WhatsApp QR Code" style={{ width: '180px', height: '180px', objectFit: 'contain' }} className="fade-in" />
+                        ) : (
+                          <QRCodeCanvas value={waQrCode} size={180} />
+                        )
+                      ) : (
                         <div className="qr-placeholder"><div className="pro-spinner"></div><span className="loading-text-saas">Gerando QR Code...</span></div>
                       )}
                     </div>

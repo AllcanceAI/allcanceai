@@ -54,15 +54,19 @@ export const createWaInstance = async (instanceName) => {
  */
 export const getWaQrCode = async (instanceName) => {
   try {
+    console.log(`🔍 [Evolution] Buscando QR para: ${instanceName}`);
     const response = await fetch(`${BASE_URL}/instance/connect/${instanceName}`, {
       method: 'GET',
       headers: getHeaders()
     });
     const data = await response.json();
-    // A Evolution retorna o base64 ou o link do QR
-    return data.base64 || data.code; 
+    console.log("📥 [Evolution] Resposta QR:", data);
+
+    // Tenta extrair o base64 de múltiplos lugares possíveis na resposta da API
+    const qrSource = data.qrcode || data;
+    return qrSource.base64 || qrSource.code || null;
   } catch (error) {
-    console.error("Erro ao buscar QR Code:", error);
+    console.error("❌ [Evolution] Erro ao buscar QR Code:", error);
     return null;
   }
 };

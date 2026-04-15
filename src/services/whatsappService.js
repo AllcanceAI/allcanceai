@@ -7,6 +7,8 @@
 const BASE_URL = import.meta.env.VITE_EVOLUTION_URL;
 const GLOBAL_KEY = import.meta.env.VITE_EVOLUTION_GLOBAL_KEY;
 
+console.log("🌐 [Evolution Config] URL Detectada:", BASE_URL || "NÃO CONFIGURADA NO PAINEL DA VERCEL");
+
 // Verificação de segurança para as variáveis de ambiente
 if (!BASE_URL || !GLOBAL_KEY) {
   console.warn("⚠️ [Evolution] ATENÇÃO: VITE_EVOLUTION_URL ou VITE_EVOLUTION_GLOBAL_KEY não configurados! Cadastre-os no painel da Vercel.");

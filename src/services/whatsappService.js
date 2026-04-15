@@ -46,6 +46,7 @@ export const fetchWaInstances = async () => {
 export const createWaInstance = async (instanceName) => {
   if (!BASE_URL) return null;
   try {
+    console.log(`🚀 [Evolution] Criando instância: ${instanceName}`);
     const response = await fetch(`${BASE_URL}/instance/create`, {
       method: 'POST',
       headers: getHeaders(),
@@ -54,9 +55,11 @@ export const createWaInstance = async (instanceName) => {
         qrcode: true
       })
     });
-    return await response.json();
+    const data = await response.json();
+    console.log("📥 [Evolution] Resposta Create:", data);
+    return data;
   } catch (error) {
-    console.error("Erro ao criar instância:", error);
+    console.error("❌ [Evolution] Erro ao criar instância:", error);
     return null;
   }
 };
@@ -73,7 +76,7 @@ export const getWaQrCode = async (instanceName) => {
       headers: getHeaders()
     });
     const data = await response.json();
-    console.log("📥 [Evolution] Resposta QR:", data);
+    console.log("📥 [Evolution] Resposta Connect (QR):", data);
 
     // Tenta extrair o base64 de múltiplos lugares possíveis na resposta da API
     const qrSource = data.qrcode || data;

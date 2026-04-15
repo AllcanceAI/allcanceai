@@ -8,6 +8,7 @@ import { generateAiResponse } from './services/aiService'
 import { useCRM } from './components/crm/CRMContext'
 import RightSidebar from './components/crm/RightSidebar'
 import { CrmMenu } from './components/crm/CrmMenu'
+import { ChannelUI } from './components/chat/ChannelInterface'
 import './components/crm/crmOverlay.css'
 
 function App() {

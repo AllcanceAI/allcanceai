@@ -7,16 +7,25 @@
 const BASE_URL = import.meta.env.VITE_EVOLUTION_URL;
 const GLOBAL_KEY = import.meta.env.VITE_EVOLUTION_GLOBAL_KEY;
 
+// Verificação de segurança para as variáveis de ambiente
+if (!BASE_URL || !GLOBAL_KEY) {
+  console.warn("⚠️ [Evolution] ATENÇÃO: VITE_EVOLUTION_URL ou VITE_EVOLUTION_GLOBAL_KEY não configurados! Cadastre-os no painel da Vercel.");
+}
+
 // Headers padrão para a Evolution API
-const getHeaders = (instanceKey) => ({
-  'Content-Type': 'application/json',
-  'apikey': instanceKey || GLOBAL_KEY
-});
+const getHeaders = (instanceKey) => {
+  if (!GLOBAL_KEY) return {};
+  return {
+    'Content-Type': 'application/json',
+    'apikey': instanceKey || GLOBAL_KEY
+  };
+};
 
 /**
  * Lista todas as instâncias da Evolution API
  */
 export const fetchWaInstances = async () => {
+  if (!BASE_URL) return [];
   try {
     const response = await fetch(`${BASE_URL}/instance/fetchInstances`, {
       method: 'GET',
@@ -33,6 +42,7 @@ export const fetchWaInstances = async () => {
  * Cria uma nova instância na Evolution API para o usuário
  */
 export const createWaInstance = async (instanceName) => {
+  if (!BASE_URL) return null;
   try {
     const response = await fetch(`${BASE_URL}/instance/create`, {
       method: 'POST',
@@ -53,6 +63,7 @@ export const createWaInstance = async (instanceName) => {
  * Busca o QR Code de uma instância específica
  */
 export const getWaQrCode = async (instanceName) => {
+  if (!BASE_URL) return null;
   try {
     console.log(`🔍 [Evolution] Buscando QR para: ${instanceName}`);
     const response = await fetch(`${BASE_URL}/instance/connect/${instanceName}`, {

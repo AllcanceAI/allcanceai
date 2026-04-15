@@ -56,22 +56,26 @@ function App() {
         if (myInstance && myInstance.status === 'open') {
           console.log("✅ Instância já está conectada.");
           setWaStatus('connected');
+        } else if (myInstance) {
+          // Instância existe mas não está conectada, busca QR
+          console.log("🔄 Instância existe, buscando QR...");
+          getWaQrCode(name).then(qr => { if (qr) setWaQrCode(qr); });
         } else {
-          console.log("⚡ Criando ou reconectando instância...");
+          // Instância não existe, cria e depois busca QR
+          console.log("⚡ Criando instância...");
           createWaInstance(name).then(res => {
-            console.log("Instância Evolution carregada:", res);
+            console.log("Instância Evolution criada:", res);
+            if (res && !res.error) {
+              // Espera 2s para a Evolution processar, depois busca QR
+              setTimeout(() => {
+                getWaQrCode(name).then(qr => { if (qr) setWaQrCode(qr); });
+              }, 2000);
+            }
           });
         }
       });
     }
   }, [activeTab, userId, waInstanceName]);
-
-  // Carrega QR Code do WhatsApp
-  useEffect(() => {
-    if (activeTab === 'whatsapp' && waStatus === 'disconnected' && waInstanceName && !waQrCode) {
-      getWaQrCode(waInstanceName).then(url => setWaQrCode(url));
-    }
-  }, [activeTab, waStatus, waInstanceName, waQrCode]);
 
   // Carrega WhatsApp Dialogs
   useEffect(() => {

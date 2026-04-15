@@ -271,26 +271,34 @@ function App() {
   const fetchUserData = async () => {
     if (!userId) return
 
-    const { data: userData } = await supabase.from('users').select('token_plan').eq('id', userId).single()
-    let currentPlan = 'monthly'
-    if (userData) { setUserPlan(userData.token_plan); currentPlan = userData.token_plan; }
+    try {
+      const { data: userData, error } = await supabase.from('users').select('token_plan').eq('id', userId).maybeSingle()
+      
+      let currentPlan = 'monthly'
+      if (userData) { 
+        setUserPlan(userData.token_plan); 
+        currentPlan = userData.token_plan; 
+      }
+      
+      const now = new Date()
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+      let startOfPeriod
+      if (currentPlan === 'daily') {
+        startOfPeriod = new Date(new Date().setHours(0,0,0,0)).toISOString()
+      } else if (currentPlan === 'weekly') {
+        const d = new Date(); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+        const date = new Date(d.setDate(diff)); date.setHours(0,0,0,0)
+        startOfPeriod = date.toISOString()
+      } else { startOfPeriod = startOfMonth }
 
-    const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-    let startOfPeriod
-    if (currentPlan === 'daily') {
-      startOfPeriod = new Date(new Date().setHours(0,0,0,0)).toISOString()
-    } else if (currentPlan === 'weekly') {
-      const d = new Date(); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-      const date = new Date(d.setDate(diff)); date.setHours(0,0,0,0)
-      startOfPeriod = date.toISOString()
-    } else { startOfPeriod = startOfMonth }
-
-    const { data: messagesData } = await supabase.from('messages').select('input_tokens, output_tokens, created_at').eq('user_id', userId).gte('created_at', startOfMonth)
-    if (messagesData) {
-      const monthlyTotal = messagesData.reduce((acc, curr) => acc + (curr.input_tokens || 0) + (curr.output_tokens || 0), 0)
-      const periodTotal = messagesData.filter(m => new Date(m.created_at) >= new Date(startOfPeriod)).reduce((acc, curr) => acc + (curr.input_tokens || 0) + (curr.output_tokens || 0), 0)
-      setTokenUsage({ monthlyUsed: monthlyTotal, periodUsed: periodTotal, totalMonthly: 500000, plan: currentPlan })
+      const { data: messagesData } = await supabase.from('messages').select('input_tokens, output_tokens, created_at').eq('user_id', userId).gte('created_at', startOfMonth)
+      if (messagesData) {
+        const monthlyTotal = messagesData.reduce((acc, curr) => acc + (curr.input_tokens || 0) + (curr.output_tokens || 0), 0)
+        const periodTotal = messagesData.filter(m => new Date(m.created_at) >= new Date(startOfPeriod)).reduce((acc, curr) => acc + (curr.input_tokens || 0) + (curr.output_tokens || 0), 0)
+        setTokenUsage({ monthlyUsed: monthlyTotal, periodUsed: periodTotal, totalMonthly: 500000, plan: currentPlan })
+      }
+    } catch (err) {
+      console.warn("Perfil de usuário ainda não criado. Usando plano padrão.");
     }
   }
 

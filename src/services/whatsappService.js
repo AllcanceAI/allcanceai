@@ -52,6 +52,8 @@ export const createWaInstance = async (instanceName) => {
       headers: getHeaders(),
       body: JSON.stringify({
         instanceName,
+        token: Math.random().toString(36).substring(7), // Algumas versões exigem token
+        integration: 'WHATSAPP',
         qrcode: true
       })
     });

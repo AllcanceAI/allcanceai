@@ -13,6 +13,7 @@ import './components/crm/crmOverlay.css'
 
 function App() {
   const [session, setSession] = useState(null)
+  const userId = session?.user?.id
   const [prompt, setPrompt] = useState('')
   const [chats, setChats] = useState([])
   const [currentChatId, setCurrentChatId] = useState(null)
@@ -241,7 +242,6 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  const userId = session?.user?.id
 
   useEffect(() => {
     if (userId) {

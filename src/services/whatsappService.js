@@ -44,3 +44,10 @@ export const connectEvolution = async (apiKey, instanceName) => {
   console.log("Conectando à Evolution API...");
   return { status: "connected" };
 };
+
+export const getWaQrCode = async () => {
+  return new Promise((res) => {
+    // Simulando o link de pareamento da Evolution API
+    setTimeout(() => res("https://evolution-api.com/pairing-qr-mock"), 1500);
+  });
+};

@@ -61,9 +61,9 @@ const RightSidebar = ({ activeChat }) => {
   };
 
   return (
-    <div className="crm-sidebar-container" style={{ position: 'relative' }}>
+    <div className="crm-sidebar-container" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       {/* Universal Auto-Pilot Toggle */}
-      <div style={{ padding: '1.5rem 2rem 0.5rem', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+      <div style={{ padding: '1.5rem 0 0.5rem', width: '100%', display: 'flex', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
         <div 
           className="ai-universal-card" 
           onClick={toggleGlobalAi}
@@ -75,29 +75,30 @@ const RightSidebar = ({ activeChat }) => {
             cursor: 'pointer',
             transition: 'all 0.3s ease',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'space-between'
+            gap: '0.75rem',
+            width: 'calc(100% - 3rem)',
+            textAlign: 'center'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ 
-              width: '40px', 
-              height: '40px', 
-              borderRadius: '12px', 
-              background: globalAiEnabled ? '#0088cc' : '#222',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: globalAiEnabled ? '0 0 15px rgba(0,136,204,0.4)' : 'none',
-              transition: 'all 0.3s'
-            }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><circle cx="12" cy="12" r="3"/></svg>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.85rem', fontWeight: '800', color: '#fff' }}>Piloto Automático</div>
-              <div style={{ fontSize: '0.65rem', color: globalAiEnabled ? '#0088cc' : '#555', textTransform: 'uppercase', fontWeight: '700', marginTop: '2px' }}>
-                {globalAiEnabled ? 'Sistema Ativo' : 'Desativado'}
-              </div>
+          <div style={{ 
+            width: '48px', 
+            height: '48px', 
+            borderRadius: '14px', 
+            background: globalAiEnabled ? '#0088cc' : '#222',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: globalAiEnabled ? '0 0 20px rgba(0,136,204,0.4)' : 'none',
+            transition: 'all 0.3s'
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.9rem', fontWeight: '800', color: '#fff' }}>Inteligência Artificial</div>
+            <div style={{ fontSize: '0.65rem', color: globalAiEnabled ? '#0088cc' : '#555', textTransform: 'uppercase', fontWeight: '700', marginTop: '2px' }}>
+              {globalAiEnabled ? 'Sistema Ativo' : 'Desativado'}
             </div>
           </div>
           <div style={{ 
@@ -123,8 +124,11 @@ const RightSidebar = ({ activeChat }) => {
       </div>
 
       {/* Submenu Dropdown Selector */}
-      <div className="crm-tabs-selector-area" style={{ position: 'relative', zIndex: 1001 }}>
-          <div className={`tg-custom-filter ${tabSelectorOpen ? 'open' : ''}`} onClick={() => setTabSelectorOpen(!tabSelectorOpen)}>
+      <div className="crm-tabs-selector-area" style={{ position: 'relative', zIndex: 1001, width: 'calc(100% - 3rem)', marginTop: '1.25rem' }}>
+          <div className={`tg-custom-filter ${tabSelectorOpen ? 'open' : ''}`} 
+            onClick={() => setTabSelectorOpen(!tabSelectorOpen)}
+            style={{ justifyContent: 'center' }}
+          >
             <span>Módulo: {activeTab}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ transform: tabSelectorOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
           </div>

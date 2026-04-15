@@ -1,5 +1,6 @@
 import { TelegramClient } from 'telegram';
 import { StringSession } from 'telegram/sessions';
+import { NewMessage } from 'telegram/events';
 
 const apiId = parseInt(import.meta.env.VITE_TELEGRAM_API_ID);
 const apiHash = import.meta.env.VITE_TELEGRAM_API_HASH;
@@ -137,6 +138,19 @@ export const downloadMediaAsUrl = async (msg) => {
     console.error('Media download failed:', e);
     return null;
   }
+};
+
+export const listenToNewMessages = (callback) => {
+  const telegramClient = getTelegramClient();
+  if (!telegramClient) return;
+
+  telegramClient.addEventHandler(async (event) => {
+    const message = event.message;
+    // Evita loop (não responde às próprias mensagens disparadas pela IA/User)
+    if (message && !message.out) {
+      callback(message);
+    }
+  }, new NewMessage({}));
 };
 
 // Cache de fotos de perfil (em memória durante a sessão)

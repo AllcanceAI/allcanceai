@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
-import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode, getDialogs, getChatMessages, sendTelegramMessage, downloadMediaAsUrl, getProfilePhotoUrl, markChatAsRead } from './services/telegramService'
+import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode, getDialogs, getChatMessages, sendTelegramMessage, downloadMediaAsUrl, getProfilePhotoUrl, markChatAsRead, listenToNewMessages } from './services/telegramService'
+import { generateAiResponse } from './services/aiService'
 import { useCRM } from './components/crm/CRMContext'
 import RightSidebar from './components/crm/RightSidebar'
 import { CrmMenu } from './components/crm/CrmMenu'
@@ -19,10 +20,42 @@ function App() {
   const [activeInstruction, setActiveInstruction] = useState(null)
   
   // CRM States
-  const { archivedIds, tags, contactTags } = useCRM();
+  const { 
+    archivedIds, tags, contactTags, 
+    globalAiEnabled, toggleGlobalAi, 
+    disabledAiChatIds, toggleChatAi 
+  } = useCRM();
+
   const [selectedFilterTag, setSelectedFilterTag] = useState('all');
   const [filterOpen, setFilterOpen] = useState(false);
   const [crmMenu, setCrmMenu] = useState({ x: 0, y: 0, visible: false, contactId: null, entity: null });
+
+  // --- PILOTO AUTOMÁTICO (GROQ) ---
+  useEffect(() => {
+    if (telegramStatus === 'connected' && globalAiEnabled) {
+      console.log("🤖 Auto-Pilot Ativo. Monitorando mensagens...");
+      listenToNewMessages(async (msg) => {
+        const contactId = msg.peerId?.userId?.toString() || msg.peerId?.chatId?.toString();
+        if (disabledAiChatIds.includes(contactId)) return;
+
+        const text = msg.message;
+        if (!text) return;
+        
+        try {
+          const history = await getChatMessages(msg.peerId, 5);
+          const aiReply = await generateAiResponse(text, history);
+          if (aiReply) {
+            await sendTelegramMessage(msg.peerId, aiReply);
+            if (selectedTgChat && (selectedTgChat.id?.toString() === contactId)) {
+              const updatedMsgs = await getChatMessages(msg.peerId, 50);
+              setTgMessages(updatedMsgs);
+            }
+          }
+        } catch (error) { console.error("🤖 Erro no Auto-Pilot:", error); }
+      });
+    }
+  }, [telegramStatus, globalAiEnabled, disabledAiChatIds, selectedTgChat]);
+  
   
   const handleCrmMenu = (e, contactId, entity) => {
     e.preventDefault();
@@ -520,11 +553,34 @@ function App() {
                       <div className="tg-avatar">{(selectedTgChat.name || '?')[0]}</div>
                     )}
                     <p className="tg-chat-name">{selectedTgChat.name}</p>
+                    
+                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      {/* Botão de Toggle IA Individual */}
+                      <button 
+                        onClick={() => toggleChatAi(selectedTgChat.id?.toString())}
+                        title={disabledAiChatIds.includes(selectedTgChat.id?.toString()) ? "Ativar IA para este chat" : "Desativar IA para este chat"}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '0.5rem',
+                          color: disabledAiChatIds.includes(selectedTgChat.id?.toString()) ? '#444' : '#0088cc',
+                          transition: 'all 0.3s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          filter: disabledAiChatIds.includes(selectedTgChat.id?.toString()) ? 'grayscale(1)' : 'drop-shadow(0 0 5px rgba(0,136,204,0.3))'
+                        }}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
+                      </button>
+
                       <div 
                         className="tg-item-more" 
-                        style={{ marginLeft: 'auto', padding: '0.5rem', cursor: 'pointer' }}
+                        style={{ padding: '0.5rem', cursor: 'pointer' }}
                         onClick={(e) => handleCrmMenu(e, selectedTgChat.id?.toString(), selectedTgChat.entity)}
                       >⋮</div>
+                    </div>
                   </div>
                   <div className="tg-messages-area">
                     {tgMessages.map((msg, i) => {

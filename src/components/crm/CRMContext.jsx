@@ -36,7 +36,7 @@ export const CRMProvider = ({ children }) => {
     return localStorage.getItem('crm_gateway_config') || null;
   });
 
-  // Persistência
+  // Persistência CRM
   useEffect(() => { localStorage.setItem('crm_tags', JSON.stringify(tags)); }, [tags]);
   useEffect(() => { localStorage.setItem('crm_contact_tags', JSON.stringify(contactTags)); }, [contactTags]);
   useEffect(() => { localStorage.setItem('crm_schedules', JSON.stringify(schedules)); }, [schedules]);
@@ -47,22 +47,19 @@ export const CRMProvider = ({ children }) => {
     const interval = setInterval(async () => {
       const now = new Date().getTime();
       const toSend = schedules.filter(s => !s.sent && new Date(s.datetime).getTime() <= now);
-      
       if (toSend.length > 0) {
         for (const item of toSend) {
           try {
             await sendTelegramMessage(item.entity, item.message);
             setSchedules(prev => prev.map(s => s.id === item.id ? { ...s, sent: true } : s));
-          } catch (e) {
-            console.error('Falha no disparo agendado:', e);
-          }
+          } catch (e) { console.error('Falha no disparo agendado:', e); }
         }
       }
-    }, 30000); // Check a cada 30s
+    }, 30000);
     return () => clearInterval(interval);
   }, [schedules]);
 
-  // Auxiliares
+  // Auxiliares CRM
   const archiveContact = (id) => setArchivedIds(prev => [...new Set([...prev, id])]);
   const unarchiveContact = (id) => setArchivedIds(prev => prev.filter(i => i !== id));
   
@@ -92,13 +89,36 @@ export const CRMProvider = ({ children }) => {
     });
   };
 
+  // --- INTELIGÊNCIA ARTIFICIAL (AUTO-PILOT) ---
+  const [globalAiEnabled, setGlobalAiEnabled] = useState(() => {
+    return localStorage.getItem('crm_ai_global') === 'true';
+  });
+
+  const [disabledAiChatIds, setDisabledAiChatIds] = useState(() => {
+    const saved = localStorage.getItem('crm_ai_disabled_chats');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Persistência AI
+  useEffect(() => { localStorage.setItem('crm_ai_global', globalAiEnabled); }, [globalAiEnabled]);
+  useEffect(() => { localStorage.setItem('crm_ai_disabled_chats', JSON.stringify(disabledAiChatIds)); }, [disabledAiChatIds]);
+
+  const toggleGlobalAi = () => setGlobalAiEnabled(!globalAiEnabled);
+  const toggleChatAi = (contactId) => {
+    setDisabledAiChatIds(prev => 
+      prev.includes(contactId) ? prev.filter(id => id !== contactId) : [...prev, contactId]
+    );
+  };
+
   return (
     <CRMContext.Provider value={{
       tags, setTags, removeTag,
       contactTags, tagContact, untagContact,
       schedules, setSchedules,
       archivedIds, archiveContact, unarchiveContact,
-      gateway, setGateway
+      gateway, setGateway,
+      globalAiEnabled, toggleGlobalAi,
+      disabledAiChatIds, toggleChatAi
     }}>
       {children}
     </CRMContext.Provider>

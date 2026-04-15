@@ -7,7 +7,13 @@ import CrmModal from './CrmModal';
 const RightSidebar = ({ activeChat }) => {
   const [activeTab, setActiveTab ] = useState('Etiquetas');
   const [tabSelectorOpen, setTabSelectorOpen] = useState(false);
-  const { tags, setTags, removeTag, schedules, archivedIds, unarchiveContact, gateway, setGateway } = useCRM();
+  const { 
+    tags, setTags, removeTag, 
+    schedules, 
+    archivedIds, unarchiveContact, 
+    gateway, setGateway,
+    globalAiEnabled, toggleGlobalAi
+  } = useCRM();
   
   // UI States
   const [newTagName, setNewTagName] = useState('');
@@ -56,6 +62,66 @@ const RightSidebar = ({ activeChat }) => {
 
   return (
     <div className="crm-sidebar-container" style={{ position: 'relative' }}>
+      {/* Universal Auto-Pilot Toggle */}
+      <div style={{ padding: '1.5rem 2rem 0.5rem', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+        <div 
+          className="ai-universal-card" 
+          onClick={toggleGlobalAi}
+          style={{ 
+            background: globalAiEnabled ? 'rgba(0,136,204,0.1)' : 'rgba(255,255,255,0.02)',
+            border: `1px solid ${globalAiEnabled ? 'rgba(0,136,204,0.3)' : 'rgba(255,255,255,0.05)'}`,
+            borderRadius: '20px',
+            padding: '1.25rem',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ 
+              width: '40px', 
+              height: '40px', 
+              borderRadius: '12px', 
+              background: globalAiEnabled ? '#0088cc' : '#222',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: globalAiEnabled ? '0 0 15px rgba(0,136,204,0.4)' : 'none',
+              transition: 'all 0.3s'
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.85rem', fontWeight: '800', color: '#fff' }}>Piloto Automático</div>
+              <div style={{ fontSize: '0.65rem', color: globalAiEnabled ? '#0088cc' : '#555', textTransform: 'uppercase', fontWeight: '700', marginTop: '2px' }}>
+                {globalAiEnabled ? 'Sistema Ativo' : 'Desativado'}
+              </div>
+            </div>
+          </div>
+          <div style={{ 
+            width: '44px', 
+            height: '24px', 
+            borderRadius: '12px', 
+            background: globalAiEnabled ? '#0088cc' : '#333',
+            position: 'relative',
+            transition: 'all 0.3s'
+          }}>
+            <div style={{ 
+              position: 'absolute', 
+              top: '3px', 
+              left: globalAiEnabled ? '23px' : '3px', 
+              width: '18px', 
+              height: '18px', 
+              borderRadius: '50%', 
+              background: '#fff',
+              transition: 'all 0.3s'
+            }} />
+          </div>
+        </div>
+      </div>
+
       {/* Submenu Dropdown Selector */}
       <div className="crm-tabs-selector-area" style={{ position: 'relative', zIndex: 1001 }}>
           <div className={`tg-custom-filter ${tabSelectorOpen ? 'open' : ''}`} onClick={() => setTabSelectorOpen(!tabSelectorOpen)}>

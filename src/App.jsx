@@ -219,21 +219,24 @@ function App() {
 
         // 3. Piloto Automático do WhatsApp (Integração Anthropic Claude 3.5 via Supabase Prompt)
         if (!newMsg.is_from_me && globalAiEnabled && !disabledAiChatIds.includes(newMsg.remote_jid)) {
+          console.log(`🤖 [Autopilot] Gatilho ativado para ${newMsg.remote_jid}. Buscando histórico...`);
+          
           // Busca o breve histórico das últimas 6 mensagens usando o serviço do WhatsApp para o Claude se situar na conversa
           import('./services/whatsappService').then(({ getWaMessages, sendWaMessage }) => {
             getWaMessages(waInstanceName, newMsg.remote_jid, 6).then(history => {
+              console.log(`🤖 [Autopilot] Histórico carregado (${history.length} msgs). Chamando Claude para userId: ${userId}`);
               
               generateAiResponse(newMsg.content, history, userId, 'whatsapp')
                 .then(aiReply => {
                   if (aiReply) {
-                    console.log(`🤖 [Claude AI] Respondendo a ${newMsg.remote_jid}...`);
+                    console.log(`🤖 [Claude AI] Resposta gerada: "${aiReply.slice(0, 30)}...". Enviando via Evolution...`);
                     sendWaMessage(waInstanceName, newMsg.remote_jid, aiReply);
-                    // Não é necessário dar push manual na tela. Nosso backend enviará, nosso próprio webhook ouvirá o Supabase e
-                    // retornará o "is_from_me = true" pelo gatilho nativo, injetando a bolha preta visual naturalmente na tela!
+                  } else {
+                    console.warn(`🤖 [Autopilot] Claude retornou vazio ou erro.`);
                   }
-                });
+                }).catch(err => console.error("🤖 [Autopilot] Erro na chamada do Claude:", err));
 
-            }).catch(console.error);
+            }).catch(err => console.error("🤖 [Autopilot] Erro ao buscar histórico:", err));
           });
         }
 

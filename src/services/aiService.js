@@ -40,7 +40,12 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
     }
   }
 
-  try {
+    console.log("🚀 [Claude Request] Enviando para Anthropic...", { 
+      system: systemPrompt?.slice(0, 50) + "...", 
+      model: MODEL,
+      historyLength: history.length 
+    });
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -51,7 +56,7 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
       },
       body: JSON.stringify({
         model: MODEL,
-        system: systemPrompt, // Anthropic pede o system fora do vetor messages
+        system: systemPrompt,
         messages: [
           ...history.slice(-5).map(m => ({ 
             role: m.out ? "assistant" : "user", 
@@ -65,8 +70,10 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
     });
 
     const data = await response.json();
+    console.log("📥 [Claude Response] Bruto:", data);
+
     if (data.error) {
-       console.error("Erro da API Claude:", data.error);
+       console.error("❌ [Claude API Error]:", data.error);
        return null;
     }
     

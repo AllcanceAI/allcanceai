@@ -119,16 +119,26 @@ export const getWaDialogs = async (instanceName) => {
       body: JSON.stringify({})
     });
     const data = await response.json();
+    
+    // Tratamento para lista encapsulada { records: [] } ou { chats: [] } se existir
+    const chatList = Array.isArray(data) ? data : (data.records || data.chats || []);
+
     // Mapeia o formato da Evolution para o formato do nosso CRM
-    return (data || []).map(chat => ({
-      id: chat.id,
-      name: chat.name || chat.id.split('@')[0],
-      unreadCount: chat.unreadCount || 0,
-      message: {
-        message: chat.lastMessage?.message?.conversation || "Mídia/Outro",
-        date: chat.lastMessage?.messageTimestamp
-      }
-    }));
+    return chatList.map(chat => {
+      // Evolvtion API v2 usa remoteJid no lugar de id
+      const chatId = chat.remoteJid || chat.id || "";
+      const chatName = chat.pushName || chat.name || (chatId ? chatId.split('@')[0] : "Desconhecido");
+
+      return {
+        id: chatId,
+        name: chatName,
+        unreadCount: chat.unreadCount || 0,
+        message: {
+          message: chat.lastMessage?.message?.conversation || "Mídia/Localização",
+          date: chat.lastMessage?.messageTimestamp || Date.now()
+        }
+      };
+    });
   } catch (error) {
     console.error("Erro ao buscar chats:", error);
     return [];

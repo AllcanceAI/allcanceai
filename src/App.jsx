@@ -3,7 +3,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode, getDialogs, getChatMessages, sendTelegramMessage, downloadMediaAsUrl, getProfilePhotoUrl, markChatAsRead, listenToNewMessages } from './services/telegramService'
-import { getWaDialogs, getWaMessages, sendWaMessage, getWaQrCode, createWaInstance, fetchWaInstances, deleteWaInstance, getWaProfilePic } from './services/whatsappService'
+import { getWaDialogs, getWaMessages, sendText, getWaQrCode, createWaInstance, fetchWaInstances, deleteWaInstance, getWaProfilePic } from './services/whatsappService'
 import { generateAiResponse } from './services/aiService'
 import { useCRM } from './components/crm/CRMContext'
 import RightSidebar from './components/crm/RightSidebar'
@@ -222,7 +222,7 @@ function App() {
           console.log(`🤖 [Autopilot] Gatilho ativado para ${newMsg.remote_jid}. Buscando histórico...`);
           
           // Busca o breve histórico das últimas 6 mensagens usando o serviço do WhatsApp para o Claude se situar na conversa
-          import('./services/whatsappService').then(({ getWaMessages, sendWaMessage }) => {
+          import('./services/whatsappService').then(({ getWaMessages, sendText }) => {
             getWaMessages(waInstanceName, newMsg.remote_jid, 6).then(history => {
               console.log(`🤖 [Autopilot] Histórico carregado (${history.length} msgs). Chamando Claude para userId: ${userId}`);
               
@@ -230,7 +230,7 @@ function App() {
                 .then(aiReply => {
                   if (aiReply) {
                     console.log(`🤖 [Claude AI] Resposta gerada: "${aiReply.slice(0, 30)}...". Enviando via Evolution...`);
-                    sendWaMessage(waInstanceName, newMsg.remote_jid, aiReply);
+                    sendText(waInstanceName, newMsg.remote_jid, aiReply);
                   } else {
                     console.warn(`🤖 [Autopilot] Claude retornou vazio ou erro.`);
                   }
@@ -238,6 +238,8 @@ function App() {
 
             }).catch(err => console.error("🤖 [Autopilot] Erro ao buscar histórico:", err));
           });
+        } else if (!newMsg.is_from_me) {
+          console.log("🤖 [Autopilot Skipped]:", { globalAiEnabled, isChatDisabled: disabledAiChatIds.includes(newMsg.remote_jid) });
         }
 
       })
@@ -667,7 +669,7 @@ function App() {
             onSendMessage={async () => {
               if (!waInput.trim() || !selectedWaChat) return;
               const text = waInput; setWaInput('');
-              await sendWaMessage(waInstanceName, selectedWaChat.id, text);
+              await sendText(waInstanceName, selectedWaChat.id, text);
               const msgs = await getWaMessages(waInstanceName, selectedWaChat.id);
               setWaMessages(msgs);
               setTimeout(() => waMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);

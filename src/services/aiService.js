@@ -3,6 +3,8 @@
  * Centraliza as chamadas ao Groq para o piloto automático do Telegram.
  */
 
+import { supabase } from '../supabaseClient';
+
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const MODEL = "llama-3.3-70b-versatile"; // Modelo premium e balanceado
 
@@ -10,11 +12,32 @@ const MODEL = "llama-3.3-70b-versatile"; // Modelo premium e balanceado
  * Gera uma resposta para uma mensagem recebida.
  * @param {string} prompt - Mensagem do usuário.
  * @param {Array} history - Breve histórico da conversa para contexto.
+ * @param {string} userId - ID do dono da conta.
+ * @param {string} channel - Canal (whatsapp | telegram).
  */
-export const generateAiResponse = async (prompt, history = []) => {
+export const generateAiResponse = async (prompt, history = [], userId = null, channel = 'telegram') => {
   if (!GROQ_API_KEY) {
     console.error("GROQ_API_KEY não configurada no .env");
     return null;
+  }
+
+  let systemPrompt = "Você é um assistente de atendimento inteligente e cordial. Responda de forma natural, curta e eficiente em português do Brasil.";
+
+  if (userId) {
+    try {
+      const { data } = await supabase
+        .from('ai_training')
+        .select('system_prompt')
+        .eq('user_id', userId)
+        .eq('channel', channel)
+        .single();
+      
+      if (data && data.system_prompt) {
+        systemPrompt = data.system_prompt;
+      }
+    } catch (e) {
+      console.warn("Falha ao buscar system prompt personalizado, usando fallback.");
+    }
   }
 
   try {
@@ -29,7 +52,7 @@ export const generateAiResponse = async (prompt, history = []) => {
         messages: [
           { 
             role: "system", 
-            content: "Você é um assistente de atendimento inteligente e cordial no Telegram. Responda de forma natural, curta e eficiente em português do Brasil. Não use emojis em excesso." 
+            content: systemPrompt 
           },
           ...history.slice(-5).map(m => ({ 
             role: m.out ? "assistant" : "user", 

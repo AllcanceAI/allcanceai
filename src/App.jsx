@@ -9,6 +9,7 @@ import { useCRM } from './components/crm/CRMContext'
 import RightSidebar from './components/crm/RightSidebar'
 import { CrmMenu } from './components/crm/CrmMenu'
 import { ChannelUI } from './components/chat/ChannelInterface'
+import { AITraining } from './components/AITraining'
 import './components/crm/crmOverlay.css'
 
 function App() {
@@ -287,7 +288,7 @@ function App() {
         
         try {
           const history = await getChatMessages(msg.peerId, 5);
-          const aiReply = await generateAiResponse(text, history);
+          const aiReply = await generateAiResponse(text, history, userId, 'telegram');
           if (aiReply) {
             await sendTelegramMessage(msg.peerId, aiReply);
             if (selectedTgChat && (selectedTgChat.id?.toString() === contactId)) {
@@ -843,7 +844,8 @@ function App() {
         )
 
       case 'arquivos': return <div className="tab-view"><h2>Arquivos</h2><div className="notes-container"><textarea placeholder="..." className="notepad" /></div></div>
-      case 'instruções': return <div className="tab-view"><h2>Instruções</h2></div>
+      case 'instruções': return <div className="tab-view"><h2>Instruções Gerais</h2><p style={{color:'#888', marginTop:'10px'}}>As instruções de IA específicas para canais estão na aba "Treinamento IA".</p></div>
+      case 'treinamento': return <AITraining userId={userId} />
       case 'configurações':
         if (activeSettingView === 'token_plan') {
           return (
@@ -924,7 +926,11 @@ function App() {
             </button>
             <button className={`nav-link-norse ${activeTab === 'instruções' ? 'active' : ''}`} onClick={() => { setActiveTab('instruções'); setSidebarOpen(false); }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-              Instruções
+              Manuais Genéricos
+            </button>
+            <button className={`nav-link-norse ${activeTab === 'treinamento' ? 'active' : ''}`} onClick={() => { setActiveTab('treinamento'); setSidebarOpen(false); }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              Treinamento IA
             </button>
           </div>
 

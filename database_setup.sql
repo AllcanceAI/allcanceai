@@ -48,3 +48,21 @@ WITH CHECK ( true );
 DROP PUBLICATION IF EXISTS supabase_realtime;
 CREATE PUBLICATION supabase_realtime;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.wa_messages;
+
+-- ===========================================
+-- TREINAMENTO DA I.A. E PROMPTS DE SISTEMA
+-- ===========================================
+CREATE TABLE public.ai_training (
+    id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    channel TEXT NOT NULL CHECK (channel IN ('whatsapp', 'telegram')),
+    system_prompt TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, channel)
+);
+
+ALTER TABLE public.ai_training ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Usuário controla seus próprios treinamentos" 
+ON public.ai_training 
+FOR ALL USING (auth.uid() = user_id);

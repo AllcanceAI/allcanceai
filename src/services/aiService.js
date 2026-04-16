@@ -5,19 +5,19 @@
 
 import { supabase } from '../supabaseClient';
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const MODEL = "llama-3.3-70b-versatile"; // Modelo premium e balanceado
+const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
+const MODEL = "claude-3-5-sonnet-20241022"; // Modelo topo de linha oficial
 
 /**
- * Gera uma resposta para uma mensagem recebida.
+ * Gera uma resposta para uma mensagem recebida usando Claude (Anthropic).
  * @param {string} prompt - Mensagem do usuário.
  * @param {Array} history - Breve histórico da conversa para contexto.
  * @param {string} userId - ID do dono da conta.
  * @param {string} channel - Canal (whatsapp | telegram).
  */
-export const generateAiResponse = async (prompt, history = [], userId = null, channel = 'telegram') => {
-  if (!GROQ_API_KEY) {
-    console.error("GROQ_API_KEY não configurada no .env");
+export const generateAiResponse = async (prompt, history = [], userId = null, channel = 'whatsapp') => {
+  if (!ANTHROPIC_API_KEY) {
+    console.error("ANTHROPIC_API_KEY não configurada no .env");
     return null;
   }
 
@@ -41,19 +41,18 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
   }
 
   try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${GROQ_API_KEY}`
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
       },
       body: JSON.stringify({
         model: MODEL,
+        system: systemPrompt, // Anthropic pede o system fora do vetor messages
         messages: [
-          { 
-            role: "system", 
-            content: systemPrompt 
-          },
           ...history.slice(-5).map(m => ({ 
             role: m.out ? "assistant" : "user", 
             content: m.message 
@@ -61,12 +60,17 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
           { role: "user", content: prompt }
         ],
         temperature: 0.7,
-        max_tokens: 512
+        max_tokens: 1024
       })
     });
 
     const data = await response.json();
-    return data.choices?.[0]?.message?.content || null;
+    if (data.error) {
+       console.error("Erro da API Claude:", data.error);
+       return null;
+    }
+    
+    return data.content?.[0]?.text || null;
   } catch (error) {
     console.error("Erro na geração de resposta AI:", error);
     return null;

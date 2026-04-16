@@ -153,11 +153,11 @@ function App() {
     }
   }, [waDialogs, waStatus, activeTab, waInstanceName]);
 
-  // Tempo Real: Recebendo mensagens automáticas (Push) pelo Supabase
+  // Tempo Real: Recebendo mensagens automáticas (Push) pelo Supabase & Piloto Automático
   useEffect(() => {
-    if (activeTab !== 'whatsapp' || waStatus !== 'connected' || !waInstanceName) return;
+    if (waStatus !== 'connected' || !waInstanceName) return;
 
-    console.log("🟢 [Realtime] Ouvindo novas mensagens do WhatsApp...");
+    console.log("🟢 [Realtime] Ouvindo novas mensagens do WhatsApp e monitorando IA...");
     const waChannel = supabase
       .channel('realtime_wa_messages')
       .on('postgres_changes', { 
@@ -217,6 +217,26 @@ function App() {
           setTimeout(() => waMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 150);
         }
 
+        // 3. Piloto Automático do WhatsApp (Integração Anthropic Claude 3.5 via Supabase Prompt)
+        if (!newMsg.is_from_me && globalAiEnabled && !disabledAiChatIds.includes(newMsg.remote_jid)) {
+          // Busca o breve histórico das últimas 6 mensagens usando o serviço do WhatsApp para o Claude se situar na conversa
+          import('./services/whatsappService').then(({ getWaMessages, sendWaMessage }) => {
+            getWaMessages(waInstanceName, newMsg.remote_jid, 6).then(history => {
+              
+              generateAiResponse(newMsg.content, history, userId, 'whatsapp')
+                .then(aiReply => {
+                  if (aiReply) {
+                    console.log(`🤖 [Claude AI] Respondendo a ${newMsg.remote_jid}...`);
+                    sendWaMessage(waInstanceName, newMsg.remote_jid, aiReply);
+                    // Não é necessário dar push manual na tela. Nosso backend enviará, nosso próprio webhook ouvirá o Supabase e
+                    // retornará o "is_from_me = true" pelo gatilho nativo, injetando a bolha preta visual naturalmente na tela!
+                  }
+                });
+
+            }).catch(console.error);
+          });
+        }
+
       })
       .subscribe((status, err) => {
          console.log("📡 [Supabase Channel Status]:", status);
@@ -226,7 +246,7 @@ function App() {
     return () => {
       supabase.removeChannel(waChannel);
     }
-  }, [activeTab, waStatus, waInstanceName]);
+  }, [waStatus, waInstanceName, globalAiEnabled, disabledAiChatIds, userId]);
   
   const handleCrmMenu = (e, contactId, entity) => {
     e.preventDefault();

@@ -19,8 +19,13 @@ function App() {
   const [currentChatId, setCurrentChatId] = useState(null)
   const [messages, setMessages] = useState([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [activeTab, setActiveTab ] = useState('agente')
+  const [activeTab, setActiveTab ] = useState(() => localStorage.getItem('allcance_active_tab') || 'agente')
   const [activeInstruction, setActiveInstruction] = useState(null)
+
+  // Persiste a aba ativa para o refresh
+  useEffect(() => {
+    localStorage.setItem('allcance_active_tab', activeTab);
+  }, [activeTab]);
   
   // CRM States
   const { 

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { sendTelegramMessage } from '../../services/telegramService';
+import { supabase } from '../../supabaseClient';
 
 const CRMContext = createContext();
 
@@ -103,7 +104,16 @@ export const CRMProvider = ({ children }) => {
   useEffect(() => { localStorage.setItem('crm_ai_global', globalAiEnabled); }, [globalAiEnabled]);
   useEffect(() => { localStorage.setItem('crm_ai_disabled_chats', JSON.stringify(disabledAiChatIds)); }, [disabledAiChatIds]);
 
-  const toggleGlobalAi = () => setGlobalAiEnabled(!globalAiEnabled);
+  const toggleGlobalAi = async () => {
+    const newState = !globalAiEnabled;
+    setGlobalAiEnabled(newState);
+    
+    // Sincroniza o botão com o banco de dados para a Edge Function respeitar a trava
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+       await supabase.from('ai_training').update({ is_active: newState }).eq('user_id', session.user.id);
+    }
+  };
   const toggleChatAi = (contactId) => {
     setDisabledAiChatIds(prev => 
       prev.includes(contactId) ? prev.filter(id => id !== contactId) : [...prev, contactId]

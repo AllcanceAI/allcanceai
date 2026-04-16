@@ -68,10 +68,16 @@ serve(async (req) => {
         // Busca treinamento no banco
         const { data: trainingData } = await supabase
           .from('ai_training')
-          .select('system_prompt')
+          .select('system_prompt, is_active')
           .eq('channel', 'whatsapp')
           .limit(1)
           .maybeSingle();
+
+        // Se a IA foi desligada no aplicativo, o servidor deve respeitar a trava
+        if (trainingData && trainingData.is_active === false) {
+          console.log("⏸️ [IA Desativada Globalmente] O botão de IA automática está OFF. Ignorando mensagem.");
+          return new Response("OK", { status: 200 });
+        }
 
         const FinalSystemPrompt = trainingData?.system_prompt || "Você é o AllcanceAI, um assistente virtual inteligente. Responda de forma curta e amigável em português.";
 

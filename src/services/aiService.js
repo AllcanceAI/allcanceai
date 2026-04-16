@@ -108,12 +108,53 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
 
     if (data.error) {
        console.error("❌ [Claude API Error]:", data.error);
-       return null;
+       // SE FALHAR CLAUDE (Ex: Sem crédito), tenta o FALLBACK no GROQ
+       return await fallbackToGroq(prompt, messages, systemPrompt);
     }
     
     return data.content?.[0]?.text || null;
   } catch (error) {
-    console.error("Erro na geração de resposta AI:", error);
-    return null;
+    console.error("🚨 Erro Crítico Claude, tentando Fallback Groq...", error);
+    return await fallbackToGroq(prompt, history, systemPrompt);
   }
 };
+
+/**
+ * Fallback para o Groq caso a Anthropic falhe (Contingência)
+ */
+async function fallbackToGroq(prompt, history, systemPrompt) {
+  const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY;
+  if (!GROQ_KEY) return null;
+
+  console.log("🔄 [Fallback] Acionando Groq para não deixar usuário no vácuo...");
+  try {
+    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_KEY}`
+      },
+      body: JSON.stringify({
+        model: import.meta.env.VITE_GROQ_MODEL || "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: systemPrompt },
+          // Formata histórico para o padrão OpenAI usado no Groq
+          ...history.slice(-10).map(m => ({ 
+             role: m.role || (m.out ? "assistant" : "user"), 
+             content: m.content || m.message 
+          })),
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 1024
+      })
+    });
+    const groqData = await groqResponse.json();
+    console.log("📥 [Groq Fallback] Sucesso:", groqData.choices?.[0]?.message?.content?.slice(0, 30));
+    return groqData.choices?.[0]?.message?.content || null;
+  } catch (err) {
+    console.error("❌ [Fallback] Groq também falhou:", err);
+    return null;
+  }
+}
+

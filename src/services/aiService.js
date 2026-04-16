@@ -40,6 +40,7 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
     }
   }
 
+  try {
     console.log("🚀 [Claude Request] Enviando para Anthropic...", { 
       system: systemPrompt?.slice(0, 50) + "...", 
       model: MODEL,

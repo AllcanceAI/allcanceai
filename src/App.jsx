@@ -56,9 +56,9 @@ function App() {
     activeWaChatRef.current = selectedWaChat;
   }, [selectedWaChat]);
 
-  // Inicializa Instância WhatsApp baseada no Usuário
+  // Inicializa Instância WhatsApp baseada no Usuário (Executa em Background)
   useEffect(() => {
-    if (activeTab === 'whatsapp' && userId && !waInstanceName) {
+    if (userId && !waInstanceName) {
       const name = `allcance_${userId.substring(0, 8)}`;
       setWaInstanceName(name);
       
@@ -100,11 +100,11 @@ function App() {
     }
   }, [activeTab, userId, waInstanceName]);
 
-  // Monitoramento de Conexão (Polling)
+  // Monitoramento de Conexão (Polling em Background)
   useEffect(() => {
     let interval;
-    if (activeTab === 'whatsapp' && waStatus === 'disconnected' && waInstanceName) {
-      console.log("⏱️ Iniciando monitoramento de conexão para:", waInstanceName);
+    if (waStatus === 'disconnected' && waInstanceName) {
+      console.log("⏱️ [Background] Monitorando conexão para:", waInstanceName);
       interval = setInterval(() => {
         fetchWaInstances().then(res => {
           const list = Array.isArray(res) ? res : (res.instances || []);

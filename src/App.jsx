@@ -66,8 +66,18 @@ function App() {
 
       // Verifica status inicial
       fetchWaInstances().then(async (instances) => {
-        const myInstance = (instances || []).find(i => i.instanceName === name);
-        if (myInstance && myInstance.status === 'open') {
+        console.log("🔍 [DEBUG] Nome da Minha Instância:", name);
+        console.log("🔍 [DEBUG] Lista de Instâncias da API:", instances);
+        
+        // Suporte para v1 e v2 da Evolution API
+        const myInstance = (instances || []).find(i => {
+          const iName = i.instanceName || i.instance?.instanceName;
+          return iName === name;
+        });
+        
+        const status = myInstance?.status || myInstance?.instance?.status;
+
+        if (myInstance && status === 'open') {
           console.log("✅ Instância já está conectada.");
           setWaStatus('connected');
         } else if (myInstance) {
@@ -89,8 +99,15 @@ function App() {
       console.log("⏱️ Iniciando monitoramento de conexão para:", waInstanceName);
       interval = setInterval(() => {
         fetchWaInstances().then(instances => {
-          const myInstance = (instances || []).find(i => i.instanceName === waInstanceName);
-          if (myInstance && myInstance.status === 'open') {
+          console.log("⏱️ [DEBUG Polling] Verificando instâncias...");
+          const myInstance = (instances || []).find(i => {
+            const iName = i.instanceName || i.instance?.instanceName;
+            return iName === waInstanceName;
+          });
+          
+          const status = myInstance?.status || myInstance?.instance?.status;
+
+          if (myInstance && status === 'open') {
             console.log("🎉 Conexão detectada!");
             setWaStatus('connected');
             clearInterval(interval);

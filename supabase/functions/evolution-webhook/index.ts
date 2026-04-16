@@ -33,15 +33,21 @@ serve(async (req) => {
 
     // 2. Se for uma mensagem nova (MESSAGES_UPSERT)
     if (event === 'messages.upsert' || event === 'MESSAGES_UPSERT') {
-      const messages = payload.data?.messages || []
       
-      for (const msg of messages) {
+      // Evolution v2 envia os dados achatados no .data principal da requisição, na maioria das vezes.
+      let messagesCount = [];
+      if (Array.isArray(payload.data?.messages)) messagesCount = payload.data.messages;
+      else if (payload.data?.message && payload.data?.key) messagesCount = [payload.data];
+      else if (payload.data?.key) messagesCount = [payload.data];
+      else if (payload.data && Array.isArray(payload.data)) messagesCount = payload.data;
+      
+      for (const msg of messagesCount) {
         // Ignora status de sistema, transmissões, etc.
-        if (msg.key.remoteJid === 'status@broadcast') continue;
+        if (msg.key?.remoteJid === 'status@broadcast') continue;
 
-        const isFromMe = msg.key.fromMe || false;
-        const messageId = msg.key.id;
-        const remoteJid = msg.key.remoteJid;
+        const isFromMe = msg.key?.fromMe || false;
+        const messageId = msg.key?.id;
+        const remoteJid = msg.key?.remoteJid;
         const pushName = msg.pushName || "Desconhecido";
         
         // Pega o texto da mensagem com segurança (texto simples, estendido ou legenda de mídia)

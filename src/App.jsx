@@ -64,20 +64,18 @@ function App() {
         }, 2000);
       };
 
-      // Verifica status inicial
       fetchWaInstances().then(async (res) => {
         console.log("🔍 [DEBUG] Nome da Minha Instância:", name);
-        console.log("🔍 [DEBUG] Resposta Bruta da API:", res);
         
         // A API pode retornar um Array direto ou um Objeto { instances: [] }
         const list = Array.isArray(res) ? res : (res.instances || []);
         
         const myInstance = list.find(i => {
-          const iName = i.instanceName || i.instance?.instanceName;
+          const iName = i.name || i.instanceName || i.instance?.instanceName;
           return iName === name;
         });
         
-        const status = myInstance?.status || myInstance?.instance?.status;
+        const status = myInstance?.connectionStatus || myInstance?.status || myInstance?.instance?.status;
         console.log("🔍 [DEBUG] Status Identificado:", status);
 
         if (myInstance && status === 'open') {
@@ -104,11 +102,11 @@ function App() {
         fetchWaInstances().then(res => {
           const list = Array.isArray(res) ? res : (res.instances || []);
           const myInstance = list.find(i => {
-            const iName = i.instanceName || i.instance?.instanceName;
+            const iName = i.name || i.instanceName || i.instance?.instanceName;
             return iName === waInstanceName;
           });
           
-          const status = myInstance?.status || myInstance?.status || myInstance?.instance?.status;
+          const status = myInstance?.connectionStatus || myInstance?.status || myInstance?.instance?.status;
           console.log("⏱️ [Polling] Status atual:", status);
 
           if (myInstance && status === 'open') {

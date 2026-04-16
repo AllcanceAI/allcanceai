@@ -146,10 +146,12 @@ function App() {
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
-        table: 'wa_messages',
-        filter: `instance_name=eq.${waInstanceName}` 
+        table: 'wa_messages'
       }, (payload) => {
         const newMsg = payload.new;
+        
+        // Filtro via Front-end para assegurar a chegada
+        if (newMsg.instance_name !== waInstanceName) return;
         
         // 1. Atualizar a aba de conversas (Esquerda) trazendo para o topo
         setWaDialogs(prev => {

@@ -1,12 +1,13 @@
 /**
  * aiService.js
- * Centraliza as chamadas ao Groq para o piloto automático do Telegram.
+ * Centraliza as chamadas ao Anthropic Claude com Fallback automático para Groq.
  */
 
 import { supabase } from '../supabaseClient';
 
 const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
-const MODEL = "claude-3-5-sonnet-20241022"; // Modelo topo de linha oficial
+// MODELO ATUALIZADO (Versão 2026 solicitada pelo usuário)
+const MODEL = "claude-haiku-4-5-20251001"; 
 
 /**
  * Gera uma resposta para uma mensagem recebida usando Claude (Anthropic).
@@ -40,6 +41,9 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
     }
   }
 
+  // --- CONTROLE DE FLUXO PARA EVITAR DUPLO DISPARO ---
+  let successfullyResponded = false;
+
   try {
     console.log("🚀 [Claude Request] Enviando para Anthropic...", { 
       system: systemPrompt?.slice(0, 50) + "...", 
@@ -48,11 +52,7 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
     });
 
     // --- CONSTRUÇÃO DE MENSAGENS (STRICT ALTERNATING ROLES) ---
-    // Anthropic exige que as mensagens alternem estritamente entre 'user' e 'assistant'.
-    
     let filteredHistory = [...history];
-    
-    // Removemos a última mensagem do histórico se ela for idêntica ao prompt atual (evita duplicidade do tempo real)
     if (filteredHistory.length > 0) {
       const lastMsg = filteredHistory[filteredHistory.length - 1];
       if (lastMsg.message === prompt && !lastMsg.out) {
@@ -63,28 +63,22 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
     const messages = [];
     filteredHistory.slice(-10).forEach(m => {
       const role = m.out ? "assistant" : "user";
-      // Só adiciona se o role for diferente do último adicionado ou se for a primeira mensagem
       if (messages.length === 0 || messages[messages.length - 1].role !== role) {
         messages.push({ role, content: m.message });
       } else {
-        // Se for o mesmo role (ex: duas msgs seguidas do user), concatena o texto
         messages[messages.length - 1].content += "\n" + m.message;
       }
     });
 
-    // Adiciona a mensagem atual (prompt)
     if (messages.length === 0 || messages[messages.length - 1].role !== "user") {
       messages.push({ role: "user", content: prompt });
     } else {
       messages[messages.length - 1].content += "\n" + prompt;
     }
 
-    // Anthropic exige que a primeira mensagem seja 'user'
     if (messages.length > 0 && messages[0].role !== "user") {
       messages.shift();
     }
-
-    console.log("🚀 [Claude Request] Enviando messages:", messages);
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -104,18 +98,27 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
     });
 
     const data = await response.json();
-    console.log("📥 [Claude Response] Bruto:", data);
+    
+    if (data.content && data.content[0]?.text) {
+       console.log("📥 [Claude Response] Sucesso.");
+       successfullyResponded = true;
+       return data.content[0].text;
+    }
 
     if (data.error) {
        console.error("❌ [Claude API Error]:", data.error);
-       // SE FALHAR CLAUDE (Ex: Sem crédito), tenta o FALLBACK no GROQ
-       return await fallbackToGroq(prompt, messages, systemPrompt);
+       if (!successfullyResponded) {
+         return await fallbackToGroq(prompt, messages, systemPrompt);
+       }
     }
     
-    return data.content?.[0]?.text || null;
+    return null;
   } catch (error) {
-    console.error("🚨 Erro Crítico Claude, tentando Fallback Groq...", error);
-    return await fallbackToGroq(prompt, history, systemPrompt);
+    console.error("🚨 Erro Crítico Claude, verificando Fallback...", error);
+    if (!successfullyResponded) {
+      return await fallbackToGroq(prompt, history, systemPrompt);
+    }
+    return null;
   }
 };
 
@@ -138,7 +141,6 @@ async function fallbackToGroq(prompt, history, systemPrompt) {
         model: import.meta.env.VITE_GROQ_MODEL || "llama-3.3-70b-versatile",
         messages: [
           { role: "system", content: systemPrompt },
-          // Formata histórico para o padrão OpenAI usado no Groq
           ...history.slice(-10).map(m => ({ 
              role: m.role || (m.out ? "assistant" : "user"), 
              content: m.content || m.message 
@@ -150,11 +152,9 @@ async function fallbackToGroq(prompt, history, systemPrompt) {
       })
     });
     const groqData = await groqResponse.json();
-    console.log("📥 [Groq Fallback] Sucesso:", groqData.choices?.[0]?.message?.content?.slice(0, 30));
     return groqData.choices?.[0]?.message?.content || null;
   } catch (err) {
     console.error("❌ [Fallback] Groq também falhou:", err);
     return null;
   }
 }
-

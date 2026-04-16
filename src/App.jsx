@@ -113,12 +113,9 @@ function App() {
             console.log("🎉 Conexão detectada!");
             setWaStatus('connected');
             clearInterval(interval);
-          } else {
-            // Continua atualizando o QR Code para ele não expirar na tela (o motivo principal do erro de leitura)
-            getWaQrCode(waInstanceName).then(qr => { if (qr) setWaQrCode(qr); });
           }
         });
-      }, 5000); // Verifica a cada 5 segundos para não lotar a api
+      }, 5000); // Verifica status a cada 5 segundos
     }
     return () => clearInterval(interval);
   }, [activeTab, waStatus, waInstanceName]);
@@ -625,6 +622,17 @@ function App() {
                       )}
                     </div>
                     <p className="qr-hint">Use o WhatsApp no seu celular para ler o código</p>
+                    <button 
+                      onClick={() => {
+                         setWaQrCode(''); 
+                         getWaQrCode(waInstanceName).then(qr => { if (qr) setWaQrCode(qr); });
+                      }}
+                      style={{ marginTop: '1rem', background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: '#888', padding: '0.4rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.2s' }}
+                      onMouseOver={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; }}
+                      onMouseOut={e => { e.currentTarget.style.color = '#888'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                    >
+                      🔄 Atualizar QR Code
+                    </button>
                   </div>
                 </div>
               </div>

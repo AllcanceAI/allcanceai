@@ -126,7 +126,7 @@ function App() {
   const [copied, setCopied] = useState(false)
   const [menuOpenId, setMenuOpenId] = useState(null)
   const [telegramStep, setTelegramStep] = useState(1)
-  const [loginMethod, setLoginMethod] = useState('phone') 
+  const [loginMethod, setLoginMethod] = useState('qr') 
   const [qrCodeLink, setQrCodeLink] = useState('')
   const [telegramStatus, setTelegramStatus] = useState('disconnected')
   const [telegramUser, setTelegramUser] = useState(null)
@@ -659,68 +659,23 @@ function App() {
                   </div>
                 </div>
                 <div className="connection-form">
-                  {loginMethod === 'phone' ? (
-                    telegramStep === 1 ? (
-                      <>
-                        <div className="input-field-group">
-                          <label>Número de Telefone</label>
-                          <div className="input-wrapper-saas">
-                            <input type="tel" placeholder="+55 11 99999-9999" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
-                          </div>
-                        </div>
-                        {telegramError && <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.5rem' }}>{telegramError}</p>}
-                        <button className="action-btn-primary" disabled={telegramLoading || !phoneNumber} onClick={async () => {
-                          setTelegramLoading(true); setTelegramError('');
-                          try { const hash = await sendPhoneCode(phoneNumber); setPhoneCodeHash(hash); setVerificationCode(''); setTelegramStep(2); }
-                          catch (e) { setTelegramError('Erro ao enviar. Verifique o número.'); }
-                          finally { setTelegramLoading(false); }
-                        }}>
-                          {telegramLoading ? 'Enviando...' : 'Enviar Código de Acesso'}
-                        </button>
-                        <div className="auth-divider-saas"><span>OU</span></div>
-                        <button className="secondary-option-btn" onClick={() => setLoginMethod('qr')}>Entrar via QR Code</button>
-                      </>
-                    ) : (
-                      <>
-                        <div className="input-field-group">
-                          <label>Código de Verificação</label>
-                          <div className="input-wrapper-saas">
-                            <input type="text" placeholder="00000" value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} autoFocus />
-                          </div>
-                          <p className="input-hint">Código enviado para {phoneNumber}</p>
-                        </div>
-                        {telegramError && <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.5rem' }}>{telegramError}</p>}
-                        <button className="action-btn-primary" disabled={telegramLoading || !verificationCode} onClick={async () => {
-                          setTelegramLoading(true); setTelegramError('');
-                          try { await verifyPhoneCode(phoneNumber, phoneCodeHash, verificationCode, (_, me) => { setTelegramStatus('connected'); setTelegramUser(me); }); }
-                          catch (e) { setTelegramError('Código inválido. Tente novamente.'); }
-                          finally { setTelegramLoading(false); }
-                        }}>
-                          {telegramLoading ? 'Verificando...' : 'Verificar Código'}
-                        </button>
-                        <button className="back-link-btn" onClick={() => { setTelegramStep(1); setTelegramError(''); }}>Alterar número</button>
-                      </>
-                    )
-                  ) : (
-                    <div className="qr-container-wrapper">
-                      <div className="qr-box">
-                        {qrCodeLink ? <QRCodeCanvas value={qrCodeLink} size={180} /> : (
-                          <div className="qr-placeholder"><div className="pro-spinner"></div><span className="loading-text-saas">Aguardando...</span></div>
-                        )}
-                      </div>
-                      <p className="qr-hint">Abra o Telegram {" > "} Configurações {" > "} Dispositivos {" > "} Conectar Dispositivo</p>
-                      <button className="back-link-btn" onClick={() => setLoginMethod('phone')}>Entrar com número de telefone</button>
+                  <div className="qr-container-wrapper">
+                    <div className="qr-box" style={{ background: '#fff', padding: '10px', borderRadius: '12px' }}>
+                      {qrCodeLink ? <QRCodeCanvas value={qrCodeLink} size={180} /> : (
+                        <div className="qr-placeholder"><div className="pro-spinner"></div><span className="loading-text-saas">Gerando QR Code...</span></div>
+                      )}
                     </div>
-                  )}
+                    <p className="qr-hint">Abra o Telegram {" > "} Configurações {" > "} Dispositivos {" > "} Conectar Dispositivo</p>
+                  </div>
                 </div>
               </div>
               <div className="integration-guide">
-                <h4>Como funciona?</h4>
+                <h4>Passo a Passo</h4>
                 <ol>
-                  <li>Insira seu número com código do país.</li>
-                  <li>Você receberá um código no aplicativo Telegram.</li>
-                  <li>Insira o código para validar a conexão.</li>
-                  <li>Pronto! Suas mensagens serão sincronizadas.</li>
+                  <li>Abra o Telegram no seu celular.</li>
+                  <li>Vá em Configurações &gt; Dispositivos.</li>
+                  <li>Clique em Conectar Dispositivo.</li>
+                  <li>Aponte a câmera para este QR Code.</li>
                 </ol>
                 <div className="guide-alert">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>

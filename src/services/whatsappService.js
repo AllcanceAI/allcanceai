@@ -172,22 +172,42 @@ export const getWaDialogs = async (instanceName) => {
 };
 
 /**
- * Envia uma mensagem de texto
+ * Envia uma mensagem de texto (Evolution API)
  */
 export const sendWaMessage = async (instanceName, remoteJid, text) => {
   try {
-    await fetch(`${BASE_URL}/message/sendText/${instanceName}`, {
+    // 1. Limpeza do Número (Evolution exige 5511999999999)
+    // Remove sufixos @s.whatsapp.net ou @g.us e remove tudo que não for dígito
+    const cleanNumber = remoteJid.split('@')[0].replace(/\D/g, '');
+    
+    const url = `${BASE_URL}/message/sendText/${instanceName}`;
+    const payload = {
+      number: cleanNumber,
+      options: { delay: 1200, presence: "composing" },
+      textMessage: { text }
+    };
+
+    console.log("📤 [Evolution Debug] Enviando Mensagem:", {
+      url,
+      payload,
+      apikeyUsed: GLOBAL_KEY?.slice(0, 5) + "****" // Log parcial por segurança
+    });
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({
-        number: remoteJid,
-        options: { delay: 1200, presence: "composing" },
-        textMessage: { text }
-      })
+      body: JSON.stringify(payload)
     });
+
+    if (!response.ok) {
+       const errorData = await response.json().catch(() => ({}));
+       console.error("❌ [Evolution API Error] 400 Bad Request:", errorData);
+       return false;
+    }
+
     return true;
   } catch (error) {
-    console.error("Erro ao enviar mensagem:", error);
+    console.error("❌ [Evolution Network Error] Falha ao enviar:", error);
     return false;
   }
 };

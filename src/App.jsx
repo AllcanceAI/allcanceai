@@ -151,7 +151,12 @@ function App() {
         const newMsg = payload.new;
         
         // Filtro via Front-end para assegurar a chegada
-        if (newMsg.instance_name !== waInstanceName) return;
+        console.log(`🔔 [Realtime Trigger] Recebido para a instância:`, newMsg.instance_name, "Esperava:", waInstanceName);
+        
+        if (newMsg.instance_name !== waInstanceName) {
+           console.log("❌ Bloqueado pelo filtro do Frontend!");
+           return;
+        }
         
         // 1. Atualizar a aba de conversas (Esquerda) trazendo para o topo
         setWaDialogs(prev => {
@@ -189,7 +194,10 @@ function App() {
         }
 
       })
-      .subscribe();
+      .subscribe((status, err) => {
+         console.log("📡 [Supabase Channel Status]:", status);
+         if (err) console.error("📡 [Supabase Channel Error]:", err);
+      });
 
     return () => {
       supabase.removeChannel(waChannel);

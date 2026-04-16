@@ -48,6 +48,11 @@ function App() {
   const [waInstanceName, setWaInstanceName] = useState('')
   const [waLoading, setWaLoading] = useState(false)
   const waMessagesEndRef = useRef(null)
+  const activeWaChatRef = useRef(null)
+
+  useEffect(() => {
+    activeWaChatRef.current = selectedWaChat;
+  }, [selectedWaChat]);
 
   // Inicializa Instância WhatsApp baseada no Usuário
   useEffect(() => {
@@ -120,7 +125,7 @@ function App() {
     return () => clearInterval(interval);
   }, [activeTab, waStatus, waInstanceName]);
 
-  // Carrega WhatsApp Dialogs
+  // Carrega WhatsApp Dialogs Historicos
   useEffect(() => {
     if (activeTab === 'whatsapp' && waStatus === 'connected' && waInstanceName) {
       setWaLoading(true);
@@ -128,6 +133,64 @@ function App() {
         setWaDialogs(dialogs);
         setWaLoading(false);
       });
+    }
+  }, [activeTab, waStatus, waInstanceName]);
+
+  // Tempo Real: Recebendo mensagens automáticas (Push) pelo Supabase
+  useEffect(() => {
+    if (activeTab !== 'whatsapp' || waStatus !== 'connected' || !waInstanceName) return;
+
+    console.log("🟢 [Realtime] Ouvindo novas mensagens do WhatsApp...");
+    const waChannel = supabase
+      .channel('realtime_wa_messages')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'wa_messages',
+        filter: `instance_name=eq.${waInstanceName}` 
+      }, (payload) => {
+        const newMsg = payload.new;
+        
+        // 1. Atualizar a aba de conversas (Esquerda) trazendo para o topo
+        setWaDialogs(prev => {
+          const chatIdx = prev.findIndex(d => d.id === newMsg.remote_jid);
+          const isActive = activeWaChatRef.current?.id === newMsg.remote_jid;
+          
+          if (chatIdx > -1) {
+            const updated = [...prev];
+            updated[chatIdx] = {
+              ...updated[chatIdx],
+              message: { message: newMsg.content, date: Math.floor(new Date(newMsg.created_at).getTime() / 1000) },
+              unreadCount: isActive ? 0 : (newMsg.is_from_me ? 0 : updated[chatIdx].unreadCount + 1)
+            };
+            const moved = updated.splice(chatIdx, 1)[0];
+            return [moved, ...updated];
+          } else {
+            return [{
+              id: newMsg.remote_jid,
+              name: newMsg.push_name || newMsg.remote_jid.split('@')[0],
+              unreadCount: newMsg.is_from_me ? 0 : 1,
+              message: { message: newMsg.content, date: Math.floor(new Date(newMsg.created_at).getTime() / 1000) }
+            }, ...prev];
+          }
+        });
+
+        // 2. Se a conversa afetada estiver aberta na tela, insere lá também (Direita)
+        if (activeWaChatRef.current?.id === newMsg.remote_jid) {
+          const formattedMsg = {
+            message: newMsg.content,
+            out: newMsg.is_from_me,
+            date: Math.floor(new Date(newMsg.created_at).getTime() / 1000)
+          };
+          setWaMessages(prev => [...prev, formattedMsg]);
+          setTimeout(() => waMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 150);
+        }
+
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(waChannel);
     }
   }, [activeTab, waStatus, waInstanceName]);
   

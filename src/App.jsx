@@ -65,25 +65,28 @@ function App() {
       };
 
       // Verifica status inicial
-      fetchWaInstances().then(async (instances) => {
+      fetchWaInstances().then(async (res) => {
         console.log("🔍 [DEBUG] Nome da Minha Instância:", name);
-        console.log("🔍 [DEBUG] Lista de Instâncias da API:", instances);
+        console.log("🔍 [DEBUG] Resposta Bruta da API:", res);
         
-        // Suporte para v1 e v2 da Evolution API
-        const myInstance = (instances || []).find(i => {
+        // A API pode retornar um Array direto ou um Objeto { instances: [] }
+        const list = Array.isArray(res) ? res : (res.instances || []);
+        
+        const myInstance = list.find(i => {
           const iName = i.instanceName || i.instance?.instanceName;
           return iName === name;
         });
         
         const status = myInstance?.status || myInstance?.instance?.status;
+        console.log("🔍 [DEBUG] Status Identificado:", status);
 
         if (myInstance && status === 'open') {
           console.log("✅ Instância já está conectada.");
           setWaStatus('connected');
         } else if (myInstance) {
-          console.log("🗑️ Instância desconectada encontrada. Deletando e criando nova...");
-          await deleteWaInstance(name);
-          await createFreshAndGetQR(name);
+          console.log("🗑️ Instância desconectada encontrada.");
+          // Se já tem QR, não vamos ficar deletando toda hora no poll
+          getWaQrCode(name).then(qr => { if (qr) setWaQrCode(qr); });
         } else {
           console.log("⚡ Criando instância nova...");
           await createFreshAndGetQR(name);
@@ -98,14 +101,15 @@ function App() {
     if (activeTab === 'whatsapp' && waStatus === 'disconnected' && waInstanceName) {
       console.log("⏱️ Iniciando monitoramento de conexão para:", waInstanceName);
       interval = setInterval(() => {
-        fetchWaInstances().then(instances => {
-          console.log("⏱️ [DEBUG Polling] Verificando instâncias...");
-          const myInstance = (instances || []).find(i => {
+        fetchWaInstances().then(res => {
+          const list = Array.isArray(res) ? res : (res.instances || []);
+          const myInstance = list.find(i => {
             const iName = i.instanceName || i.instance?.instanceName;
             return iName === waInstanceName;
           });
           
-          const status = myInstance?.status || myInstance?.instance?.status;
+          const status = myInstance?.status || myInstance?.status || myInstance?.instance?.status;
+          console.log("⏱️ [Polling] Status atual:", status);
 
           if (myInstance && status === 'open') {
             console.log("🎉 Conexão detectada!");
@@ -113,7 +117,7 @@ function App() {
             clearInterval(interval);
           }
         });
-      }, 3000); // Verifica a cada 3 segundos
+      }, 3000);
     }
     return () => clearInterval(interval);
   }, [activeTab, waStatus, waInstanceName]);

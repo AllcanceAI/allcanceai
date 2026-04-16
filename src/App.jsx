@@ -174,6 +174,11 @@ function App() {
            console.log("❌ Bloqueado pelo filtro do Frontend!");
            return;
         }
+
+        // Filtra JIDs internos para impedir que eventos de sistema revivam chats ocultos
+        if (!newMsg.remote_jid.endsWith('@s.whatsapp.net') && !newMsg.remote_jid.endsWith('@c.us')) {
+           return;
+        }
         
         // 1. Atualizar a aba de conversas (Esquerda) trazendo para o topo
         setWaDialogs(prev => {
@@ -190,9 +195,11 @@ function App() {
             const moved = updated.splice(chatIdx, 1)[0];
             return [moved, ...updated];
           } else {
+            // Em caso de chat novo, impedir o uso do próprio nome do usuário como título do chat se ele for o remetente nativo
+            const displayChatName = !newMsg.is_from_me && newMsg.push_name ? newMsg.push_name : newMsg.remote_jid.split('@')[0];
             return [{
               id: newMsg.remote_jid,
-              name: newMsg.push_name || newMsg.remote_jid.split('@')[0],
+              name: displayChatName,
               unreadCount: newMsg.is_from_me ? 0 : 1,
               message: { message: newMsg.content, date: Math.floor(new Date(newMsg.created_at).getTime() / 1000) }
             }, ...prev];

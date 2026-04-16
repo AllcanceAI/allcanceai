@@ -143,8 +143,14 @@ export const getWaDialogs = async (instanceName) => {
     // Tratamento para lista encapsulada { records: [] } ou { chats: [] } se existir
     const chatList = Array.isArray(data) ? data : (data.records || data.chats || []);
 
+    // Filtra exclusivamente contatos com números de telefone reais (removendo @g.us, @lid, transmissões, etc)
+    const realChats = chatList.filter(chat => {
+      const jid = chat.remoteJid || chat.id || "";
+      return jid.endsWith('@s.whatsapp.net') || jid.endsWith('@c.us');
+    });
+
     // Mapeia o formato da Evolution para o formato do nosso CRM
-    return chatList.map(chat => {
+    return realChats.map(chat => {
       // Evolvtion API v2 usa remoteJid no lugar de id
       const chatId = chat.remoteJid || chat.id || "";
       const chatName = chat.pushName || chat.name || (chatId ? chatId.split('@')[0] : "Desconhecido");

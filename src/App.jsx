@@ -236,9 +236,9 @@ function App() {
                     
                     for (const chunk of chunks) {
                       await sendText(waInstanceName, newMsg.remote_jid, chunk.trim());
-                      // Simulação de digitação/delay entre bolhas
+                      // Simulação de digitação/delay humano entre bolhas (3 segundos)
                       if (chunks.length > 1) {
-                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        await new Promise(resolve => setTimeout(resolve, 3000));
                       }
                     }
                   } else {

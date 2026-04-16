@@ -196,17 +196,30 @@ export const getWaMessages = async (instanceName, remoteJid) => {
       headers: getHeaders(),
       body: JSON.stringify({
         where: { remoteJid },
-        take: 50
+        take: 100
       })
     });
     const data = await response.json();
-    return (data.messages || []).map(m => ({
-      message: m.message?.conversation || "",
-      out: m.key.fromMe,
-      date: m.messageTimestamp
-    })).reverse();
+    
+    // Suporte a v2 (pode retornar array direto ou em records)
+    const msgList = Array.isArray(data) ? data : (data.messages || data.records || []);
+    
+    return msgList.map(m => {
+      // Pega o texto da mensagem com segurança (texto simples, estendido ou legenda de mídia)
+      const textContent = m.message?.conversation 
+        || m.message?.extendedTextMessage?.text 
+        || m.message?.imageMessage?.caption
+        || "[Mídia/Outro Formato]";
+
+      return {
+        message: textContent,
+        out: m.key?.fromMe,
+        date: m.messageTimestamp
+      };
+    }).reverse();
   } catch (error) {
-    console.error("Erro ao buscar mensagens:", error);
+    console.error("Erro ao buscar mensagens do histórico:", error);
     return [];
   }
 };
+

@@ -39,3 +39,12 @@ CREATE POLICY "Servicos podem inserir logs"
 ON public.evolution_webhook_logs 
 FOR INSERT 
 WITH CHECK ( true );
+
+-- ==========================================
+-- ATENÇÃO, COMANDO DE TEMPO REAL (REALTIME)
+-- ==========================================
+-- O comando abaixo é OBRIGATÓRIO para ativar o "Modo Ao Vivo"
+-- Sem ele, a tabela NÃO envia as mensagens novas rápido para as abas!
+DROP PUBLICATION IF EXISTS supabase_realtime;
+CREATE PUBLICATION supabase_realtime;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.wa_messages;

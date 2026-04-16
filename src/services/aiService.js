@@ -58,13 +58,51 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
       body: JSON.stringify({
         model: MODEL,
         system: systemPrompt,
-        messages: [
-          ...history.slice(-5).map(m => ({ 
-            role: m.out ? "assistant" : "user", 
-            content: m.message 
-          })),
-          { role: "user", content: prompt }
-        ],
+    // --- CONSTRUÇÃO DE MENSAGENS (STRICT ALTERNATING ROLES) ---
+    // Anthropic exige que as mensagens alternem estritamente entre 'user' e 'assistant'.
+    // Também removemos a última mensagem do histórico se ela for idêntica ao prompt atual (evita duplicidade do tempo real).
+    
+    let filteredHistory = [...history];
+    if (filteredHistory.length > 0) {
+      const lastMsg = filteredHistory[filteredHistory.length - 1];
+      if (lastMsg.message === prompt && !lastMsg.out) {
+        filteredHistory.pop();
+      }
+    }
+
+    const messages = [];
+    filteredHistory.slice(-10).forEach(m => {
+      const role = m.out ? "assistant" : "user";
+      // Só adiciona se o role for diferente do último adicionado
+      if (messages.length === 0 || messages[messages.length - 1].role !== role) {
+        messages.push({ role, content: m.message });
+      } else {
+        // Se for o mesmo role (ex: duas msgs seguidas do user), concatena o texto
+        messages[messages.length - 1].content += "\n" + m.message;
+      }
+    });
+
+    // Adiciona a mensagem atual
+    if (messages.length === 0 || messages[messages.length - 1].role !== "user") {
+      messages.push({ role: "user", content: prompt });
+    } else {
+      messages[messages.length - 1].content += "\n" + prompt;
+    }
+
+    console.log("🚀 [Claude Request] Enviando messages:", messages);
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        system: systemPrompt,
+        messages: messages,
         temperature: 0.7,
         max_tokens: 1024
       })

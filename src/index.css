@@ -767,6 +767,28 @@ body, html, #root {
   transform: translateX(-2px);
 }
 
+.mobile-only-burger {
+  display: none;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 0.4rem;
+  margin-right: 0.2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.mobile-only-burger:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+@media (max-width: 768px) {
+  .back-btn { display: none !important; }
+  .mobile-only-burger { display: flex !important; }
+}
+
 /* SCROLLBAR & RECENT */
 .recent-list {
   display: flex;

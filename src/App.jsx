@@ -552,6 +552,9 @@ function App() {
           <div className="tab-view">
             <div className="tab-header-flex">
               <div className="tab-title-group">
+                <button className="mobile-only-burger" onClick={() => setSidebarOpen(true)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
                 <button className="back-btn" onClick={() => setActiveTab('agente')}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Voltar
                 </button>
@@ -657,6 +660,9 @@ function App() {
           <div className="tab-view">
             <div className="tab-header-flex">
               <div className="tab-title-group">
+                <button className="mobile-only-burger" onClick={() => setSidebarOpen(true)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
                 <button className="back-btn" onClick={() => setActiveTab('agente')}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Voltar
                 </button>
@@ -747,7 +753,7 @@ function App() {
   const getUsageColor = () => { if (usagePercent > 85) return '#ef4444'; if (usagePercent > 60) return '#f59e0b'; return '#10b981'; }
 
   return (
-    <div className={`layout ${(activeTab === 'telegram' || activeTab === 'whatsapp') ? 'hide-sidebar' : ''}`}>
+    <div className="layout">
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header-main">

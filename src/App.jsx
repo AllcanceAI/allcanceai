@@ -113,9 +113,12 @@ function App() {
             console.log("🎉 Conexão detectada!");
             setWaStatus('connected');
             clearInterval(interval);
+          } else {
+            // Continua atualizando o QR Code para ele não expirar na tela (o motivo principal do erro de leitura)
+            getWaQrCode(waInstanceName).then(qr => { if (qr) setWaQrCode(qr); });
           }
         });
-      }, 3000);
+      }, 5000); // Verifica a cada 5 segundos para não lotar a api
     }
     return () => clearInterval(interval);
   }, [activeTab, waStatus, waInstanceName]);

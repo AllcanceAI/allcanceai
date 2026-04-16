@@ -41,11 +41,19 @@ export const startQRLogin = async (onQRGenerated, onLoginSuccess) => {
 
     // Se já tem sessão salva, verifica se ainda está autorizado
     if (savedSession) {
-      const authorized = await telegramClient.isUserAuthorized();
-      if (authorized) {
-        const me = await telegramClient.getMe();
-        onLoginSuccess(savedSession, me);
-        return;
+      try {
+        const authorized = await telegramClient.isUserAuthorized();
+        if (authorized) {
+          const me = await telegramClient.getMe();
+          onLoginSuccess(savedSession, me);
+          return;
+        } else {
+          console.warn('⚠️ [Telegram] Sessão não autorizada. Limpando...');
+          clearSession();
+        }
+      } catch (authErr) {
+        console.warn('⚠️ [Telegram] Erro ao validar sessão existente. Limpando...', authErr);
+        clearSession();
       }
     }
 
@@ -73,7 +81,7 @@ export const startQRLogin = async (onQRGenerated, onLoginSuccess) => {
     onLoginSuccess(sessionString, me);
 
   } catch (err) {
-    console.error('Failed to start Telegram QR Login:', err);
+    console.error('❌ [Telegram] Falha fatal no Login:', err);
   }
 };
 

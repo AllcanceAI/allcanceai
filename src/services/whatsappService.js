@@ -41,6 +41,26 @@ export const fetchWaInstances = async () => {
 };
 
 /**
+ * Deleta uma instância existente
+ */
+export const deleteWaInstance = async (instanceName) => {
+  if (!BASE_URL) return null;
+  try {
+    console.log(`🗑️ [Evolution] Deletando instância: ${instanceName}`);
+    const response = await fetch(`${BASE_URL}/instance/delete/${instanceName}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    const data = await response.json();
+    console.log("📥 [Evolution] Resposta Delete:", data);
+    return data;
+  } catch (error) {
+    console.error("❌ [Evolution] Erro ao deletar instância:", error);
+    return null;
+  }
+};
+
+/**
  * Cria uma nova instância na Evolution API para o usuário
  */
 export const createWaInstance = async (instanceName) => {

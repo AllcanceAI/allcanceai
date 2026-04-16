@@ -64,26 +64,42 @@ function App() {
         }, 2000);
       };
 
-      // Verifica se a instância já existe
+      // Verifica status inicial
       fetchWaInstances().then(async (instances) => {
         const myInstance = (instances || []).find(i => i.instanceName === name);
         if (myInstance && myInstance.status === 'open') {
-          // Já está conectada, vai direto pro chat
           console.log("✅ Instância já está conectada.");
           setWaStatus('connected');
         } else if (myInstance) {
-          // Existe mas NÃO está conectada → deletar e criar nova
           console.log("🗑️ Instância desconectada encontrada. Deletando e criando nova...");
           await deleteWaInstance(name);
           await createFreshAndGetQR(name);
         } else {
-          // Não existe → criar nova
           console.log("⚡ Criando instância nova...");
           await createFreshAndGetQR(name);
         }
       });
     }
   }, [activeTab, userId, waInstanceName]);
+
+  // Monitoramento de Conexão (Polling)
+  useEffect(() => {
+    let interval;
+    if (activeTab === 'whatsapp' && waStatus === 'disconnected' && waInstanceName) {
+      console.log("⏱️ Iniciando monitoramento de conexão para:", waInstanceName);
+      interval = setInterval(() => {
+        fetchWaInstances().then(instances => {
+          const myInstance = (instances || []).find(i => i.instanceName === waInstanceName);
+          if (myInstance && myInstance.status === 'open') {
+            console.log("🎉 Conexão detectada!");
+            setWaStatus('connected');
+            clearInterval(interval);
+          }
+        });
+      }, 3000); // Verifica a cada 3 segundos
+    }
+    return () => clearInterval(interval);
+  }, [activeTab, waStatus, waInstanceName]);
 
   // Carrega WhatsApp Dialogs
   useEffect(() => {

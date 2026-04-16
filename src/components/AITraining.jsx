@@ -74,6 +74,11 @@ export const AITraining = ({ userId }) => {
     setIsLoading(true);
 
     try {
+      // Prepara o histórico da conversa (descartando mensagens vazias/erros locais)
+      const historicalMessages = chatHistory
+        .filter(m => m.content && !m.content.includes("🚨"))
+        .map(msg => ({ role: msg.role, content: msg.content }));
+
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -85,22 +90,28 @@ export const AITraining = ({ userId }) => {
           messages: [
             { 
               role: "system", 
-              content: `Você é um assistente especializado em escrever system prompts para IAs de atendimento. 
-Quando o usuário enviar uma instrução, atualize o system prompt atual incorporando a mudança solicitada. 
-Retorne APENAS um JSON estrito no formato (responda em português sem desvios, somente JSON puro):
+              content: `Você é um brilhante Consultor e Engenheiro de Prompts. Sua tarefa é ajudar o dono da empresa a refinar o "System Prompt" do seu robô de atendimento do WhatsApp.
+              
+Regras de Comportamento:
+1. Aja como um parceiro de negócio prestativo.
+2. IMPORTANTE: Não sobrescreva o prompt imediatamente! Quando o usuário disser o que quer ("Quero que ofereça desconto"), primeiro responda algo como: "Ótima ideia! Sugiro que adicionemos a seguinte regra: X. Você quer que eu adicione isso ao nosso prompt original?"
+3. Se (e somente se) o usuário consentir claramente (ex: "sim", "pode", "adicione", "quero", "isso aí"), você deve definir "update_prompt" como true, e em "system_prompt" retornar TODO O PROMPT ORIGINAL UNIDO ÀS NOVAS REGRAS, preservando todo o resto.
+4. Se ele estiver apenas conversando, tirando dúvidas, reclamando ou você estiver apenas sugerindo algo, "update_prompt" DEVE ser false.
+
+Prompt Atual Cadastrado no Robô:
+"""
+${currentPrompt}
+"""
+
+Responda SEMPRE com este JSON estrito:
 {
-  "system_prompt": "<system prompt completo atualizado>",
-  "message": "<mensagem curta e amigável confirmando a atualização, com um tom entusiasmado>"
+  "update_prompt": boolean,
+  "system_prompt": "O novo prompt completo pronto para uso (só precisa vir se update_prompt = true, caso contrário envie vazio '')",
+  "message": "Sua mensagem conversacional curta e clara para o usuário"
 }`
             },
-            { 
-              role: "user", 
-              content: `System prompt atual:
-${currentPrompt}
-
-Instrução do usuário:
-${userText}`
-            }
+            ...historicalMessages,
+            { role: "user", content: userText }
           ],
           response_format: { type: "json_object" },
           temperature: 0.5,
@@ -119,26 +130,30 @@ ${userText}`
           throw new Error("Groq não retornou JSON válido.");
         }
 
+        const shouldUpdate = jsonResponse.update_prompt === true;
         const newPrompt = jsonResponse.system_prompt;
         const aiMessage = jsonResponse.message;
 
-        // Upsert Database
-        const { error: dbError } = await supabase.from('ai_training').upsert(
-          { user_id: userId, channel, system_prompt: newPrompt },
-          { onConflict: 'user_id, channel' }
-        );
+        if (shouldUpdate && newPrompt) {
+          // Salva no banco de dados
+          const { error: dbError } = await supabase.from('ai_training').upsert(
+            { user_id: userId, channel, system_prompt: newPrompt },
+            { onConflict: 'user_id, channel' }
+          );
 
-        if (!dbError) {
-          setCurrentPrompt(newPrompt);
-        } else {
-          console.error("Erro ao salvar no Supabase:", dbError);
+          if (!dbError) {
+            setCurrentPrompt(newPrompt);
+            console.log("✅ [Treinador] Prompt Atualizado com Sucesso no Supabase.");
+          } else {
+            console.error("Erro ao salvar no Supabase:", dbError);
+          }
         }
 
         setChatHistory(prev => [...prev, { role: 'assistant', content: aiMessage }]);
       }
     } catch (error) {
       console.error("Erro ao treinar IA:", error);
-      setChatHistory(prev => [...prev, { role: 'assistant', content: "🚨 Ocorreu um erro ao processar. Tente reenviar." }]);
+      setChatHistory(prev => [...prev, { role: 'assistant', content: "🚨 Ocorreu um erro ao processar sua requisição." }]);
     } finally {
       setIsLoading(false);
     }

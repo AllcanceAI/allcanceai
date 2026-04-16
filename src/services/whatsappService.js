@@ -65,16 +65,36 @@ export const deleteWaInstance = async (instanceName) => {
  */
 export const createWaInstance = async (instanceName) => {
   if (!BASE_URL) return null;
+  
+  // URL do banco de dados (Supabase Edge Function) para receber Webhooks
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const webhookUrl = supabaseUrl ? `${supabaseUrl}/functions/v1/evolution-webhook` : "https://sua-url-de-webhook";
+
   try {
-    console.log(`🚀 [Evolution] Criando instância: ${instanceName}`);
+    console.log(`🚀 [Evolution] Criando instância e atrelando Webhook: ${instanceName}`);
+    
+    const bodyConfig = {
+      instanceName,
+      integration: 'WHATSAPP-BAILEYS',
+      qrcode: true,
+      webhook_wa_business: false,
+      webhook: {
+        url: webhookUrl,
+        byEvents: false,
+        base64: false,
+        events: [
+          "MESSAGES_UPSERT",
+          "MESSAGES_UPDATE",
+          "SEND_MESSAGE",
+          "CONNECTION_UPDATE"
+        ]
+      }
+    };
+
     const response = await fetch(`${BASE_URL}/instance/create`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({
-        instanceName,
-        integration: 'WHATSAPP-BAILEYS',
-        qrcode: true
-      })
+      body: JSON.stringify(bodyConfig)
     });
     const data = await response.json();
     console.log("📥 [Evolution] Resposta Create:", data);

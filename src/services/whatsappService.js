@@ -201,8 +201,12 @@ export const getWaMessages = async (instanceName, remoteJid) => {
     });
     const data = await response.json();
     
-    // Suporte a v2 (pode retornar array direto ou em records)
-    const msgList = Array.isArray(data) ? data : (data.messages || data.records || []);
+    // Suporte robusto a múltiplas versões da Evolution (extrai a array real e evita que 'msgList' seja objeto)
+    let msgList = [];
+    if (Array.isArray(data)) msgList = data;
+    else if (data.messages && Array.isArray(data.messages.records)) msgList = data.messages.records;
+    else if (data.messages && Array.isArray(data.messages)) msgList = data.messages;
+    else if (data.records && Array.isArray(data.records)) msgList = data.records;
     
     return msgList.map(m => {
       // Pega o texto da mensagem com segurança (texto simples, estendido ou legenda de mídia)

@@ -472,3 +472,85 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* =========================================
+   Mobile Responsiveness
+========================================= */
+@media (max-width: 768px) {
+  .ai-training-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1rem;
+    gap: 1.2rem;
+  }
+  
+  .ai-training-title-area {
+    width: 100%;
+  }
+  
+  .ai-channel-toggle {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .channel-btn {
+    flex: 1;
+    justify-content: center;
+    font-size: 0.8rem;
+    padding: 8px 10px;
+  }
+  
+  .ai-training-body {
+    padding: 0.8rem 1rem 1rem 1rem;
+    gap: 1rem;
+  }
+  
+  .ai-prompt-visor-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .visor-header-left {
+    font-size: 0.8rem;
+  }
+  
+  .ai-trainer-messages {
+    padding: 1rem;
+  }
+  
+  .ai-message-row {
+    max-width: 95%;
+  }
+  
+  .ai-message-avatar {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .ai-bubble {
+    font-size: 0.85rem;
+    padding: 10px 14px;
+  }
+  
+  .ai-trainer-input-area {
+    padding: 0.8rem 1rem;
+  }
+  
+  .ai-empty-icon {
+    font-size: 2.5rem;
+  }
+  
+  .prompt-modal-content {
+    width: 95%;
+    max-height: 85vh;
+  }
+  
+  .prompt-modal-header {
+    padding: 1rem;
+  }
+  
+  .prompt-modal-body {
+    padding: 1rem;
+    font-size: 0.85rem;
+  }
+}

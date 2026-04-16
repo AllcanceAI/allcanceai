@@ -114,8 +114,9 @@ export const getWaQrCode = async (instanceName) => {
 export const getWaDialogs = async (instanceName) => {
   try {
     const response = await fetch(`${BASE_URL}/chat/findChats/${instanceName}`, {
-      method: 'GET',
-      headers: getHeaders()
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({})
     });
     const data = await response.json();
     // Mapeia o formato da Evolution para o formato do nosso CRM

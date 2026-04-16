@@ -227,10 +227,20 @@ function App() {
               console.log(`🤖 [Autopilot] Histórico carregado (${history.length} msgs). Chamando Claude para userId: ${userId}`);
               
               generateAiResponse(newMsg.content, history, userId, 'whatsapp')
-                .then(aiReply => {
+                .then(async (aiReply) => {
                   if (aiReply) {
-                    console.log(`🤖 [Claude AI] Resposta gerada: "${aiReply.slice(0, 30)}...". Enviando via Evolution...`);
-                    sendText(waInstanceName, newMsg.remote_jid, aiReply);
+                    console.log(`🤖 [Claude AI] Resposta gerada. Fatiando para envio humano...`);
+                    
+                    // Fatiamento por parágrafos (duplo enter)
+                    const chunks = aiReply.split('\n\n').filter(chunk => chunk.trim() !== '');
+                    
+                    for (const chunk of chunks) {
+                      await sendText(waInstanceName, newMsg.remote_jid, chunk.trim());
+                      // Simulação de digitação/delay entre bolhas
+                      if (chunks.length > 1) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                      }
+                    }
                   } else {
                     console.warn(`🤖 [Autopilot] Claude retornou vazio ou erro.`);
                   }

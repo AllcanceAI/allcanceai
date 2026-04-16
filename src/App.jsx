@@ -551,7 +551,12 @@ function App() {
         ) : (
           <div className="tab-view">
             <div className="tab-header-flex">
-              <h2>Conectar WhatsApp</h2>
+              <div className="tab-title-group">
+                <button className="back-btn" onClick={() => setActiveTab('agente')}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Voltar
+                </button>
+                <h2>Conectar WhatsApp</h2>
+              </div>
               <span className="status-badge-disconnected">Desconectado</span>
             </div>
             <div className="integration-container">
@@ -651,7 +656,12 @@ function App() {
         ) : (
           <div className="tab-view">
             <div className="tab-header-flex">
-              <h2>Conectar Telegram</h2>
+              <div className="tab-title-group">
+                <button className="back-btn" onClick={() => setActiveTab('agente')}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Voltar
+                </button>
+                <h2>Conectar Telegram</h2>
+              </div>
               <span className="status-badge-disconnected">Desconectado</span>
             </div>
             <div className="integration-container">

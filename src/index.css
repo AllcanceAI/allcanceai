@@ -748,17 +748,24 @@ body, html, #root {
 .back-btn {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  background: none;
-  border: none;
-  color: #666;
+  gap: 0.6rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #888;
+  padding: 0.5rem 0.8rem;
+  border-radius: 12px;
   font-weight: 600;
+  font-size: 0.85rem;
   cursor: pointer;
-  margin-bottom: 1.5rem;
-  transition: color 0.2s;
+  transition: all 0.2s;
+  height: fit-content;
 }
 
-.back-btn:hover { color: #fff; }
+.back-btn:hover { 
+  background: rgba(255, 255, 255, 0.08); 
+  color: #fff; 
+  transform: translateX(-2px);
+}
 
 /* SCROLLBAR & RECENT */
 .recent-list {
@@ -836,6 +843,12 @@ body, html, #root {
 .tab-header-flex h2 {
   margin: 0;
   line-height: 1;
+}
+
+.tab-title-group {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
 }
 
 .status-badge-disconnected {

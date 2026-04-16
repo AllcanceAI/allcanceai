@@ -179,34 +179,42 @@ ${userText}`
 
       <div className="ai-training-body">
         
-        {/* Painel do Prompt Atual (Visor Lateral Ou Acordion Bonito) */}
-        <div className="ai-prompt-visor-wrapper">
-          <div 
-            className="ai-prompt-visor-header"
-            onClick={() => setIsPromptVisible(!isPromptVisible)} 
-          >
+        {/* Em vez de Acordion Inline, usar botão nativo simples que aciona o Modal */}
+        <div className="ai-prompt-visor-wrapper" onClick={() => setIsPromptVisible(true)}>
+          <div className="ai-prompt-visor-header">
             <div className="visor-header-left">
               <span className="visor-pulse"></span>
-              <strong>Diretrizes em Execução (System Prompt)</strong>
+              <strong>Visualizar Diretrizes em Execução</strong>
             </div>
-            <button className={`expand-btn ${isPromptVisible ? 'open' : ''}`}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+            <button className="expand-btn">
+              Acessar
             </button>
           </div>
-          
-          <div className={`ai-prompt-visor-content ${isPromptVisible ? 'expanded' : ''}`}>
-             <div className="prompt-text-block">
-                {currentPrompt}
-             </div>
-          </div>
         </div>
+
+        {/* Modal Sobreposto do System Prompt */}
+        {isPromptVisible && (
+          <div className="prompt-modal-overlay" onClick={() => setIsPromptVisible(false)}>
+            <div className="prompt-modal-content" onClick={e => e.stopPropagation()}>
+              <div className="prompt-modal-header">
+                <h3>System Prompt Base</h3>
+                <button className="prompt-modal-close" onClick={() => setIsPromptVisible(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+              <div className="prompt-modal-body">
+                {currentPrompt}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Área de Bate-Papo do Treinador */}
         <div className="ai-trainer-chat">
           <div className="ai-trainer-messages">
             {chatHistory.length === 0 ? (
               <div className="ai-empty-state">
-                <div className="ai-empty-icon">✨</div>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.5, marginBottom: '1rem', color: '#0072FF' }}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                 <h3>Como deve ser seu atendente hoje?</h3>
                 <p>Use linguagem natural. Ex: <i>"Agora seja mais amigável e ofereça descontos."</i></p>
               </div>

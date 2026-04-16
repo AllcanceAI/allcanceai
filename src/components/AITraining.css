@@ -153,35 +153,98 @@
 }
 
 .expand-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.expand-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Modal System Prompt Overlay */
+.prompt-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 99999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.prompt-modal-content {
+  background: var(--bg-secondary, #1a1a1a);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  animation: modal-fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.prompt-modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.prompt-modal-header h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.1rem;
+}
+
+.prompt-modal-close {
   background: none;
   border: none;
-  color: #666;
-  transition: transform 0.3s;
+  color: #888;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: color 0.2s;
 }
-.expand-btn.open {
-  transform: rotate(180deg);
-  color: #fff;
-}
-
-.ai-prompt-visor-content {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.4s cubic-bezier(0, 1, 0, 1);
-  background: rgba(0, 0, 0, 0.2);
+.prompt-modal-close:hover {
+  color: #ef4444;
 }
 
-.ai-prompt-visor-content.expanded {
-  max-height: 500px;
-  transition: max-height 0.6s ease-in-out;
-}
-
-.prompt-text-block {
-  padding: 16px;
-  color: #bbb;
-  font-size: 0.85rem;
+.prompt-modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  color: #ccc;
+  font-size: 0.9rem;
   line-height: 1.6;
   white-space: pre-wrap;
-  border-top: 1px solid rgba(255,255,255,0.03);
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+}
+.prompt-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+.prompt-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
 }
 
 /* Chat Área Funcional */

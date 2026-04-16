@@ -217,40 +217,9 @@ function App() {
           setTimeout(() => waMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 150);
         }
 
-        // 3. Piloto Automático do WhatsApp (Integração Anthropic Claude 3.5 via Supabase Prompt)
-        if (!newMsg.is_from_me && globalAiEnabled && !disabledAiChatIds.includes(newMsg.remote_jid)) {
-          console.log(`🤖 [Autopilot] Gatilho ativado para ${newMsg.remote_jid}. Buscando histórico...`);
-          
-          // Busca o breve histórico das últimas 6 mensagens usando o serviço do WhatsApp para o Claude se situar na conversa
-          import('./services/whatsappService').then(({ getWaMessages, sendText }) => {
-            getWaMessages(waInstanceName, newMsg.remote_jid, 6).then(history => {
-              console.log(`🤖 [Autopilot] Histórico carregado (${history.length} msgs). Chamando Claude para userId: ${userId}`);
-              
-              generateAiResponse(newMsg.content, history, userId, 'whatsapp')
-                .then(async (aiReply) => {
-                  if (aiReply) {
-                    console.log(`🤖 [Claude AI] Resposta gerada. Fatiando para envio humano...`);
-                    
-                    // Fatiamento por parágrafos (duplo enter)
-                    const chunks = aiReply.split('\n\n').filter(chunk => chunk.trim() !== '');
-                    
-                    for (const chunk of chunks) {
-                      await sendText(waInstanceName, newMsg.remote_jid, chunk.trim());
-                      // Simulação de digitação/delay humano entre bolhas (3 segundos)
-                      if (chunks.length > 1) {
-                        await new Promise(resolve => setTimeout(resolve, 3000));
-                      }
-                    }
-                  } else {
-                    console.warn(`🤖 [Autopilot] Claude retornou vazio ou erro.`);
-                  }
-                }).catch(err => console.error("🤖 [Autopilot] Erro na chamada do Claude:", err));
-
-            }).catch(err => console.error("🤖 [Autopilot] Erro ao buscar histórico:", err));
-          });
-        } else if (!newMsg.is_from_me) {
-          console.log("🤖 [Autopilot Skipped]:", { globalAiEnabled, isChatDisabled: disabledAiChatIds.includes(newMsg.remote_jid) });
-        }
+        // --- NOTA: O PILOTO AUTOMÁTICO AGORA RODA NO SERVIDOR (EDGE FUNCTION) ---
+        // Removida a lógica de disparo daqui para evitar respostas duplicadas.
+        // O sistema agora funciona 24/7 mesmo com esta aba fechada!
 
       })
       .subscribe((status, err) => {

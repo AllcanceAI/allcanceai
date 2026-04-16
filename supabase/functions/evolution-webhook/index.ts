@@ -7,86 +7,137 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Trata a requisição OPTIONS (CORS pré-requisição)
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
     const payload = await req.json()
-    console.log("📥 [Webhook Recebido da Evolution API]:", JSON.stringify(payload))
+    console.log("📥 [Webhook] Evento:", payload.event)
 
-    // Capturando variáveis de ambiente injetadas no Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
+    const groqKey = Deno.env.get('GROQ_API_KEY')
+    const evoUrl = Deno.env.get('VITE_EVOLUTION_URL') || Deno.env.get('EVOLUTION_URL')
+    const evoKey = Deno.env.get('VITE_EVOLUTION_GLOBAL_KEY') || Deno.env.get('EVOLUTION_GLOBAL_KEY')
     
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // 1. Loga o evento bruto
     const event = payload.event
     const instanceName = payload.instance || payload.instanceName || "desconhecida"
-    
-    await supabase.from('evolution_webhook_logs').insert({
-      event_type: event,
-      payload: payload
-    })
 
-    // 2. Se for uma mensagem nova (MESSAGES_UPSERT)
+    // 1. Loga o evento bruto para debug
+    await supabase.from('evolution_webhook_logs').insert({ event_type: event, payload: payload })
+
+    // 2. Processa mensagens recebidas
     if (event === 'messages.upsert' || event === 'MESSAGES_UPSERT') {
+      const msg = payload.data?.messages?.[0] || payload.data?.[0] || payload.data;
       
-      // Evolution v2 envia os dados achatados no .data principal da requisição, na maioria das vezes.
-      let messagesCount = [];
-      if (Array.isArray(payload.data?.messages)) messagesCount = payload.data.messages;
-      else if (payload.data?.message && payload.data?.key) messagesCount = [payload.data];
-      else if (payload.data?.key) messagesCount = [payload.data];
-      else if (payload.data && Array.isArray(payload.data)) messagesCount = payload.data;
-      
-      for (const msg of messagesCount) {
-        // Ignora status de sistema, transmissões, etc.
-        if (msg.key?.remoteJid === 'status@broadcast') continue;
+      if (!msg || msg.key?.remoteJid === 'status@broadcast') {
+        return new Response("Ignorado", { status: 200 });
+      }
 
-        const isFromMe = msg.key?.fromMe || false;
-        const messageId = msg.key?.id;
-        const remoteJid = msg.key?.remoteJid;
-        const pushName = msg.pushName || "Desconhecido";
-        
-        // Pega o texto da mensagem com segurança (texto simples, estendido ou legenda de mídia)
-        const textContent = msg.message?.conversation 
+      const remoteJid = msg.key?.remoteJid;
+      const isFromMe = msg.key?.fromMe || false;
+      const textContent = msg.message?.conversation 
           || msg.message?.extendedTextMessage?.text 
           || msg.message?.imageMessage?.caption
-          || "[Mídia/Outro Formato]";
+          || "";
+
+      // Salva no banco (para histórico)
+      await supabase.from('wa_messages').insert({
+        instance_name: instanceName,
+        remote_jid: remoteJid,
+        message_id: msg.key?.id,
+        push_name: msg.pushName || "Contato",
+        is_from_me: isFromMe,
+        content: textContent,
+        message_type: "text"
+      });
+
+      // --- PILOTO AUTOMÁTICO (SERVER-SIDE) ---
+      if (!isFromMe && textContent) {
+        console.log(`🤖 [Autopilot Server] Identificando dono da instância: ${instanceName}`);
+        
+        // Tenta encontrar o usuário pelo prefixo da instância (allcance_user8char)
+        const userPrefix = instanceName.replace('allcance_', '');
+        
+        // Busca o System Prompt na tabela ai_training
+        // Como o prefixo é o começo do UUID, buscamos quem "começa com" ou apenas pegamos o primeiro treinamento se for single-tenant
+        const { data: trainingData } = await supabase
+          .from('ai_training')
+          .select('system_prompt, user_id')
+          .eq('channel', 'whatsapp')
+          .limit(1)
+          .single(); // Em um SaaS multi-tenant real, aqui checaríamos o prefixo do user_id
+
+        if (trainingData) {
+          console.log("🧠 [Autopilot Server] Chamando Claude...");
           
-        const messageType = Object.keys(msg.message || {})[0] || "unknown";
+          // Busca histórico recente para contexto (últimas 6)
+          const { data: history } = await supabase
+            .from('wa_messages')
+            .select('content, is_from_me')
+            .eq('remote_jid', remoteJid)
+            .order('created_at', { ascending: false })
+            .limit(6);
 
-        console.log(`💬 Salvando mensagem de ${remoteJid}: ${textContent}`)
+          const formattedHistory = (history || []).reverse().map(h => ({
+            role: h.is_from_me ? "assistant" : "user",
+            content: h.content
+          }));
 
-        // Salva na tabela wa_messages
-        await supabase.from('wa_messages').insert({
-          instance_name: instanceName,
-          remote_jid: remoteJid,
-          message_id: messageId,
-          push_name: pushName,
-          is_from_me: isFromMe,
-          content: textContent,
-          message_type: messageType
-        })
+          // Chamada ao Claude
+          const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": anthropicKey!,
+              "anthropic-version": "2023-06-01"
+            },
+            body: JSON.stringify({
+              model: "claude-haiku-4-5-20251001",
+              system: trainingData.system_prompt,
+              messages: [...formattedHistory, { role: "user", content: textContent }],
+              max_tokens: 1024
+            })
+          });
 
-        // ====== AQUI VOCÊ PODE INJETAR A CHAMADA DA SUA IA (GROQ) PARAA RESPONDER ======
-        // Se isFromMe for false, a IA pode avaliar o textContent, gerar uma resposta
-        // usando a API da Groq e em seguida mandar responder o cliente usando a Evolution API!
+          const claudeData = await claudeRes.json();
+          let aiReply = claudeData.content?.[0]?.text;
+
+          // Fallback para Groq se Claude falhar (Crédito, etc)
+          if (!aiReply && groqKey) {
+            console.log("🔄 [Server Fallback] Usando Groq...");
+            const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+              method: "POST",
+              headers: { "Authorization": `Bearer ${groqKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: [{ role: "system", content: trainingData.system_prompt }, { role: "user", content: textContent }]
+              })
+            });
+            const groqData = await groqRes.json();
+            aiReply = groqData.choices?.[0]?.message?.content;
+          }
+
+          if (aiReply) {
+             const chunks = aiReply.split('\n\n').filter((c: string) => c.trim());
+             for (const chunk of chunks) {
+                console.log(`📤 [Server Send] Enviando parte: ${chunk.slice(0,20)}...`);
+                await fetch(`${evoUrl}/message/sendText/${instanceName}`, {
+                  method: 'POST',
+                  headers: { 'apikey': evoKey!, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ number: remoteJid.split('@')[0], text: chunk.trim() })
+                });
+                if (chunks.length > 1) await new Promise(r => setTimeout(r, 3000));
+             }
+          }
+        }
       }
     }
 
-    return new Response(JSON.stringify({ success: true, message: "Webhook processado" }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    })
-
+    return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   } catch (error) {
-    console.error("❌ [Erro Webhook]:", error.message)
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
-    })
+    return new Response(JSON.stringify({ error: error.message }), { status: 400 })
   }
 })

@@ -3,7 +3,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode, getDialogs, getChatMessages, sendTelegramMessage, downloadMediaAsUrl, getProfilePhotoUrl, markChatAsRead, listenToNewMessages } from './services/telegramService'
-import { getWaDialogs, getWaMessages, sendWaMessage, getWaQrCode, createWaInstance, fetchWaInstances, deleteWaInstance } from './services/whatsappService'
+import { getWaDialogs, getWaMessages, sendWaMessage, getWaQrCode, createWaInstance, fetchWaInstances, deleteWaInstance, getWaProfilePic } from './services/whatsappService'
 import { generateAiResponse } from './services/aiService'
 import { useCRM } from './components/crm/CRMContext'
 import RightSidebar from './components/crm/RightSidebar'
@@ -47,6 +47,7 @@ function App() {
   const [waQrCode, setWaQrCode] = useState('')
   const [waInstanceName, setWaInstanceName] = useState('')
   const [waLoading, setWaLoading] = useState(false)
+  const [waAvatarUrls, setWaAvatarUrls] = useState({})
   const waMessagesEndRef = useRef(null)
   const activeWaChatRef = useRef(null)
 
@@ -135,6 +136,21 @@ function App() {
       });
     }
   }, [activeTab, waStatus, waInstanceName]);
+
+  // Efeito assíncrono para garantir o carregamento suave das fotos de perfil sem bloquear a tela
+  useEffect(() => {
+    if (activeTab === 'whatsapp' && waStatus === 'connected' && waDialogs.length > 0) {
+      waDialogs.forEach(dialog => {
+        if (!waAvatarUrls[dialog.id]) {
+          getWaProfilePic(waInstanceName, dialog.id).then(url => {
+            if (url) {
+              setWaAvatarUrls(prev => ({ ...prev, [dialog.id]: url }));
+            }
+          });
+        }
+      });
+    }
+  }, [waDialogs, waStatus, activeTab, waInstanceName]);
 
   // Tempo Real: Recebendo mensagens automáticas (Push) pelo Supabase
   useEffect(() => {
@@ -635,7 +651,7 @@ function App() {
               setTimeout(() => waMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
             }}
             loadingChats={waLoading}
-            avatarUrls={{}}
+            avatarUrls={waAvatarUrls}
             onReturn={() => setActiveTab('agente')}
             onDisconnect={() => { setWaStatus('disconnected'); setWaDialogs([]); setSelectedWaChat(null); }}
             tags={tags}

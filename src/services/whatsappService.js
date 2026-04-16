@@ -237,3 +237,23 @@ export const getWaMessages = async (instanceName, remoteJid) => {
   }
 };
 
+/**
+ * Busca a foto de perfil do contato (Evolution v2)
+ */
+export const getWaProfilePic = async (instanceName, remoteJid) => {
+  try {
+    const response = await fetch(`${BASE_URL}/chat/fetchProfilePictureUrl/${instanceName}`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ number: remoteJid }) // 'number' is the payload format expected
+    });
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    return data?.profilePictureUrl || data?.picture || null;
+  } catch (error) {
+    return null; // Ocultar silenciosamente, pois muitos contatos não tem foto pública
+  }
+};
+

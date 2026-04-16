@@ -196,7 +196,7 @@ export const getWaMessages = async (instanceName, remoteJid) => {
       headers: getHeaders(),
       body: JSON.stringify({
         where: { remoteJid },
-        take: 100
+        take: 350
       })
     });
     const data = await response.json();
@@ -208,7 +208,11 @@ export const getWaMessages = async (instanceName, remoteJid) => {
     else if (data.messages && Array.isArray(data.messages)) msgList = data.messages;
     else if (data.records && Array.isArray(data.records)) msgList = data.records;
     
-    return msgList.map(m => {
+    // Filtro absoluto de segurança: Garante que NENHUMA mensagem de outro chat apareça vazada
+    // na tela caso a Evolution API não respeite a query 'where' na base do Prisma.
+    const strictFilteredList = msgList.filter(m => m.key?.remoteJid === remoteJid);
+    
+    return strictFilteredList.map(m => {
       // Pega o texto da mensagem com segurança (texto simples, estendido ou legenda de mídia)
       const textContent = m.message?.conversation 
         || m.message?.extendedTextMessage?.text 

@@ -47,22 +47,12 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
       historyLength: history.length 
     });
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true"
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        system: systemPrompt,
     // --- CONSTRUÇÃO DE MENSAGENS (STRICT ALTERNATING ROLES) ---
     // Anthropic exige que as mensagens alternem estritamente entre 'user' e 'assistant'.
-    // Também removemos a última mensagem do histórico se ela for idêntica ao prompt atual (evita duplicidade do tempo real).
     
     let filteredHistory = [...history];
+    
+    // Removemos a última mensagem do histórico se ela for idêntica ao prompt atual (evita duplicidade do tempo real)
     if (filteredHistory.length > 0) {
       const lastMsg = filteredHistory[filteredHistory.length - 1];
       if (lastMsg.message === prompt && !lastMsg.out) {
@@ -73,7 +63,7 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
     const messages = [];
     filteredHistory.slice(-10).forEach(m => {
       const role = m.out ? "assistant" : "user";
-      // Só adiciona se o role for diferente do último adicionado
+      // Só adiciona se o role for diferente do último adicionado ou se for a primeira mensagem
       if (messages.length === 0 || messages[messages.length - 1].role !== role) {
         messages.push({ role, content: m.message });
       } else {
@@ -82,11 +72,16 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
       }
     });
 
-    // Adiciona a mensagem atual
+    // Adiciona a mensagem atual (prompt)
     if (messages.length === 0 || messages[messages.length - 1].role !== "user") {
       messages.push({ role: "user", content: prompt });
     } else {
       messages[messages.length - 1].content += "\n" + prompt;
+    }
+
+    // Anthropic exige que a primeira mensagem seja 'user'
+    if (messages.length > 0 && messages[0].role !== "user") {
+      messages.shift();
     }
 
     console.log("🚀 [Claude Request] Enviando messages:", messages);

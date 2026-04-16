@@ -6,7 +6,7 @@
 import { supabase } from '../supabaseClient';
 
 const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
-const MODEL = "claude-3-5-sonnet-20241022"; // Modelo topo de linha oficial
+const MODEL = "claude-3-haiku-20240307"; // Modelo mais leve para teste de crédito
 
 /**
  * Gera uma resposta para uma mensagem recebida usando Claude (Anthropic).

@@ -61,8 +61,51 @@ serve(async (req) => {
         message_type: "text"
       });
 
+      let finalContent = textContent;
+
+      // --- TRANSCRIÇÃO DE ÁUDIO (WHISPER) ---
+      if (!isFromMe && !finalContent.trim() && msg.message?.audioMessage && groqKey) {
+        console.log("🎙️ [Áudio Detectado] Baixando pacote para transcrição Whisper...");
+        try {
+          const b64res = await fetch(`${evoUrl}/chat/getBase64FromMediaMessage/${instanceName}`, {
+            method: 'POST',
+            headers: { 'apikey': evoKey!, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: msg })
+          });
+          const b64data = await b64res.json();
+          if (b64data && b64data.base64) {
+             const dataUrl = b64data.base64.startsWith('data:') ? b64data.base64 : `data:audio/ogg;base64,${b64data.base64}`;
+             const audioBlob = await (await fetch(dataUrl)).blob();
+             
+             console.log("🪄 [Whisper] Enviando processamento neural para Groq...");
+             const formData = new FormData();
+             formData.append('file', audioBlob, 'audio.ogg');
+             formData.append('model', 'whisper-large-v3');
+             formData.append('language', 'pt');
+             formData.append('response_format', 'json');
+             
+             const txRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${groqKey}` },
+                body: formData
+             });
+             const txData = await txRes.json();
+             if (txData.text) {
+                finalContent = `[MENSAGEM DE ÁUDIO TRANSCRITA PELO SISTEMA]: "${txData.text}"`;
+                console.log("📝 [Transcrição OK]:", finalContent);
+                // Atualiza a tabela para que o painel e o contexto reflitam a transcrição
+                await supabase.from('wa_messages').update({ content: finalContent }).eq('message_id', msg.key?.id).eq('instance_name', instanceName);
+             } else {
+                console.error("❌ Retorno do Whisper vazio ou falho:", txData);
+             }
+          }
+        } catch(audioErr) {
+          console.error("❌ Erro fatal ao transcrever áudio:", audioErr);
+        }
+      }
+
       // --- DISPARO DA IA ---
-      if (!isFromMe && textContent.trim()) {
+      if (!isFromMe && finalContent.trim()) {
         console.log("🦾 [IA] Iniciando processamento...")
 
         // Busca treinamento no banco
@@ -95,10 +138,10 @@ serve(async (req) => {
         }));
 
         // Se o último do histórico já for o texto atual, não duplica
-        if (messages.length > 0 && messages[messages.length - 1].content === textContent && messages[messages.length - 1].role === "user") {
+        if (messages.length > 0 && messages[messages.length - 1].content === finalContent && messages[messages.length - 1].role === "user") {
            // Já está lá
         } else {
-           messages.push({ role: "user", content: textContent });
+           messages.push({ role: "user", content: finalContent });
          }
 
         console.log(`🧠 [Claude] Chamando modelo Haiku 4.5...`)

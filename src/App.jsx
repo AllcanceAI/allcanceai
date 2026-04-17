@@ -340,6 +340,7 @@ function App() {
           console.log("📩 [Realtime] Injetando bolha via Supabase...");
           
           const newMsg = {
+            id: payload.new.message_id, // Identificador Único
             message: payload.new.content,
             out: payload.new.is_from_me,
             date: Math.floor(new Date(payload.new.created_at).getTime() / 1000),
@@ -348,7 +349,8 @@ function App() {
           };
 
           setWaMessages(prev => {
-            const alreadyExists = prev.some(m => m.message === newMsg.message && Math.abs(m.date - newMsg.date) < 5);
+            // Se o ID já existir na lista atual, ignora a duplicata
+            const alreadyExists = prev.some(m => m.id === newMsg.id);
             if (alreadyExists) return prev;
             return [...prev, newMsg];
           });

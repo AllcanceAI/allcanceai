@@ -90,27 +90,23 @@ export const AITraining = ({ userId }) => {
           messages: [
             { 
               role: "system", 
-              content: `Você é um Consultor de IA e Engenheiro de Prompts. Ajude o usuário a refinar o "System Prompt" do robô de atendimento do WhatsApp dele.
+              content: `Responda apenas em JSON. Você é um Engenheiro de Prompts. Ajude a refinar este prompt atual. 
 
-IMPORTANTE: Responda APENAS com um objeto JSON. Não use blocos de código markdown.
-Estrutura do JSON:
-{
-  "update_prompt": boolean,
-  "system_prompt": "O novo prompt completo (se update=true)",
-  "message": "Sua resposta conversacional para o usuário"
-}
+JSON:
+{ "update_prompt": boolean, "system_prompt": "string", "message": "string" }
 
 Prompt Atual:
 """
 ${currentPrompt}
 """`
             },
-            ...historicalMessages,
+            ...historicalMessages.slice(-4),
             { role: "user", content: userText }
           ],
           temperature: 0.3,
           max_tokens: 2000
         })
+
       });
 
       if (!response.ok) {

@@ -704,11 +704,10 @@ function App() {
             setInputValue={setWaInput}
             onSendMessage={async () => {
               if (!waInput.trim() || !selectedWaChat) return;
-              const text = waInput; setWaInput('');
+              const text = waInput; 
+              setWaInput('');
+              // O Realtime cuidará de mostrar a mensagem assim que ela for processada
               await sendText(waInstanceName, selectedWaChat.id, text);
-              const msgs = await getWaMessages(waInstanceName, selectedWaChat.id);
-              setWaMessages(msgs);
-              setTimeout(() => waMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
             }}
             onSelectChat={async (chat) => {
               if (!chat) { setSelectedWaChat(null); return; }

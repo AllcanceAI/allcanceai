@@ -319,17 +319,20 @@ function App() {
     console.log("📡 [Realtime] Iniciando radar para:", selectedWaChat.id);
 
     const channel = supabase
-      .channel(`chat-${selectedWaChat.id}`)
+      .channel('wa-realtime-global')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'wa_messages',
-          filter: `remote_jid=eq.${selectedWaChat.id}`
+          table: 'wa_messages'
         },
         async (payload) => {
-          console.log("📩 [Realtime] Nova mensagem recebida:", payload.new);
+          // Filtra aqui no código (seguro) em vez de no banco (instável com @)
+          if (payload.new.remote_jid !== selectedWaChat.id) return;
+          if (payload.new.instance_name !== waInstanceName) return;
+
+          console.log("📩 [Realtime] Injetando mensagem para o chat atual...");
           
           const newMsg = {
             message: payload.new.content,
@@ -339,18 +342,17 @@ function App() {
             rawMessage: null 
           };
 
-          // Evita duplicidade se o front já tiver inserido localmente ao enviar
           setWaMessages(prev => {
-            const alreadyExists = prev.some(m => m.message === newMsg.message && Math.abs(m.date - newMsg.date) < 2);
+            const alreadyExists = prev.some(m => m.message === newMsg.message && Math.abs(m.date - newMsg.date) < 5);
             if (alreadyExists) return prev;
             return [...prev, newMsg];
           });
 
-          // Scroll suave
           setTimeout(() => waMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
         }
       )
       .subscribe();
+
 
     return () => {
       console.log("📴 [Realtime] Desconectando radar antigo...");

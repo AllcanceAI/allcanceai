@@ -328,11 +328,15 @@ function App() {
           table: 'wa_messages'
         },
         async (payload) => {
-          // Filtra aqui no código (seguro) em vez de no banco (instável com @)
-          if (payload.new.remote_jid !== selectedWaChat.id) return;
+          // Filtra aqui no código:
+          // 1. Deve ser o mesmo chat OU ser uma mensagem de sincronia do dono (@lid)
+          const isMeSync = payload.new.is_from_me && payload.new.remote_jid?.includes('@lid');
+          const isCurrentChat = payload.new.remote_jid === selectedWaChat.id;
+
+          if (!isCurrentChat && !isMeSync) return;
           if (payload.new.instance_name !== waInstanceName) return;
 
-          console.log("📩 [Realtime] Injetando mensagem para o chat atual...");
+          console.log("📩 [Realtime] Injetando mensagem enviada/recebida...");
           
           const newMsg = {
             message: payload.new.content,

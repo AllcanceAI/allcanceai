@@ -41,8 +41,14 @@ serve(async (req) => {
         return new Response("OK", { status: 200 });
       }
 
-      const remoteJid = msg.key?.remoteJid;
+      let remoteJid = msg.key?.remoteJid;
       const isFromMe = msg.key?.fromMe || false;
+
+      // Se for sincronia do celular (@lid), tenta descobrir quem é o destinatário real lá dentro
+      if (isFromMe && remoteJid.includes('@lid')) {
+         const innerMsg = msg.message?.deviceSentMessage?.message;
+         if (innerMsg?.key?.remoteJid) remoteJid = innerMsg.key.remoteJid;
+      }
 
       // Extrai a mensagem real (desempacota deviceSentMessage)
       const realMsg = msg.message?.deviceSentMessage?.message 

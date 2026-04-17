@@ -90,33 +90,34 @@ export const AITraining = ({ userId }) => {
           messages: [
             { 
               role: "system", 
-              content: `Você é um brilhante Consultor e Engenheiro de Prompts. Sua tarefa é ajudar o dono da empresa a refinar o "System Prompt" do seu robô de atendimento do WhatsApp.
-              
-Regras de Comportamento:
-1. Aja como um parceiro de negócio prestativo.
-2. IMPORTANTE: Não sobrescreva o prompt imediatamente! Quando o usuário disser o que quer ("Quero que ofereça desconto"), primeiro responda algo como: "Ótima ideia! Sugiro que adicionemos a seguinte regra: X. Você quer que eu adicione isso ao nosso prompt original?"
-3. Se (e somente se) o usuário consentir claramente (ex: "sim", "pode", "adicione", "quero", "isso aí"), você deve definir "update_prompt" como true, e em "system_prompt" retornar TODO O PROMPT ORIGINAL UNIDO ÀS NOVAS REGRAS, preservando todo o resto.
-4. Se ele estiver apenas conversando, tirando dúvidas, reclamando ou você estiver apenas sugerindo algo, "update_prompt" DEVE ser false.
+              content: `Sua tarefa é responder SEMPRE em formato JSON. Você é um Consultor de IA e Engenheiro de Prompts. Ajude o usuário a refinar o "System Prompt" do robô de atendimento dele.
 
-Prompt Atual Cadastrado no Robô:
+REGRAS DE RESPOSTA (SEM EXCEÇÃO):
+1. Retorne APENAS um objeto JSON válido.
+2. Não escreva nada fora do JSON.
+3. Se o usuário sugerir uma mudança, primeiro sugira a regra em "message" e mantenha "update_prompt": false.
+4. Se o usuário confirmar (ex: "pode salvar", "sim", "atualize"), defina "update_prompt": true e em "system_prompt" coloque o NOVO PROMPT COMPLETO.
+
+Prompt Atual:
 """
 ${currentPrompt}
 """
 
-Responda SEMPRE com este JSON estrito:
+Estrutura do JSON esperado:
 {
   "update_prompt": boolean,
-  "system_prompt": "O novo prompt completo pronto para uso (só precisa vir se update_prompt = true, caso contrário envie vazio '')",
-  "message": "Sua mensagem conversacional curta e clara para o usuário"
+  "system_prompt": "string",
+  "message": "string"
 }`
             },
             ...historicalMessages,
             { role: "user", content: userText }
           ],
           response_format: { type: "json_object" },
-          temperature: 0.5,
+          temperature: 0.3,
           max_tokens: 1500
         })
+
       });
 
       const data = await response.json();

@@ -382,6 +382,57 @@ function App() {
     };
   }, [selectedWaChat?.id, waStatus, waInstanceName]);
 
+  // --- RADAR GLOBAL (Barra Lateral em Tempo Real) ---
+  useEffect(() => {
+    if (waStatus !== 'connected' || !waInstanceName) return;
+
+    console.log("🌐 [Radar Global] Ativando sincronia da barra lateral...");
+
+    const globalChannel = supabase
+      .channel('wa-global-sidebar')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'wa_messages',
+          filter: `instance_name=eq.${waInstanceName}`
+        },
+        async (payload) => {
+          const contactId = payload.new.remote_jid;
+          if (!contactId || contactId.includes('@lid')) return; // Ignora sincronia interna
+
+          console.log("🔄 [Sidebar Update] Movendo contato para o topo:", contactId);
+
+          setWaDialogs(prev => {
+            const newDialogs = [...prev];
+            const index = newDialogs.findIndex(d => d.id === contactId);
+            
+            // Dados atualizados do contato
+            const updatedData = {
+              ...(index >= 0 ? newDialogs[index] : { 
+                id: contactId, 
+                name: payload.new.push_name || contactId.split('@')[0],
+                picture: null 
+              }),
+              message: payload.new.content,
+              time: Math.floor(new Date(payload.new.created_at).getTime() / 1000)
+            };
+
+            // Remove o antigo (se existir) e coloca no topo
+            if (index >= 0) newDialogs.splice(index, 1);
+            return [updatedData, ...newDialogs];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(globalChannel);
+    };
+  }, [waStatus, waInstanceName]);
+
+
   
   const [tokenUsage, setTokenUsage] = useState({ 
     monthlyUsed: 0, 

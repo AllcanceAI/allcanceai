@@ -1,8 +1,0 @@
-{
-    "rewrites": [
-        {
-            "source": "/evo/:path*",
-            "destination": "https://say-accessible-self-bomb.trycloudflare.com/:path*"
-        }
-    ]
-}

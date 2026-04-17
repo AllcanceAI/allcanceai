@@ -329,14 +329,15 @@ function App() {
         },
         async (payload) => {
           // Filtra aqui no código:
-          // 1. Deve ser o mesmo chat OU ser uma mensagem de sincronia do dono (@lid)
-          const isMeSync = payload.new.is_from_me && payload.new.remote_jid?.includes('@lid');
-          const isCurrentChat = payload.new.remote_jid === selectedWaChat.id;
+          const incomingJid = payload.new.remote_jid;
+          const isMeSync = payload.new.is_from_me && incomingJid?.includes('@lid');
+          const isCurrentChat = incomingJid === selectedWaChat.id;
 
+          // Aceita se for o chat atual OU for uma sincronia sua (que o webhook vai ajustar)
           if (!isCurrentChat && !isMeSync) return;
           if (payload.new.instance_name !== waInstanceName) return;
 
-          console.log("📩 [Realtime] Injetando mensagem enviada/recebida...");
+          console.log("📩 [Realtime] Injetando bolha via Supabase...");
           
           const newMsg = {
             message: payload.new.content,

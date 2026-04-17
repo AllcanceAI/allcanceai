@@ -44,8 +44,8 @@ serve(async (req) => {
       let remoteJid = msg.key?.remoteJid;
       const isFromMe = msg.key?.fromMe || false;
 
-      // Se for sincronia do celular (@lid), tenta descobrir quem é o destinatário real lá dentro
-      if (isFromMe && remoteJid.includes('@lid')) {
+      // Se for sincronia do celular (@lid), tenta descobrir quem é o destinatário real lá dentro (protegido contra null)
+      if (isFromMe && remoteJid?.includes('@lid')) {
          const innerMsg = msg.message?.deviceSentMessage?.message;
          if (innerMsg?.key?.remoteJid) remoteJid = innerMsg.key.remoteJid;
       }

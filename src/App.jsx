@@ -328,35 +328,36 @@ function App() {
           table: 'wa_messages'
         },
         async (payload) => {
-          // Filtra aqui no código:
           const incomingJid = payload.new.remote_jid;
           const isMeSync = payload.new.is_from_me && incomingJid?.includes('@lid');
           const isCurrentChat = incomingJid === selectedWaChat.id;
 
-          // Aceita se for o chat atual OU for uma sincronia sua (que o webhook vai ajustar)
           if (!isCurrentChat && !isMeSync) return;
           if (payload.new.instance_name !== waInstanceName) return;
 
-          console.log("📩 [Realtime] Injetando bolha via Supabase...");
-          
-          const newMsg = {
-            id: payload.new.message_id, // Identificador Único
-            message: payload.new.content,
-            out: payload.new.is_from_me,
-            date: Math.floor(new Date(payload.new.created_at).getTime() / 1000),
-            hasMedia: false, 
-            rawMessage: null 
-          };
+          const newMsgId = payload.new.message_id;
 
           setWaMessages(prev => {
-            // Se o ID já existir na lista atual, ignora a duplicata
-            const alreadyExists = prev.some(m => m.id === newMsg.id);
-            if (alreadyExists) return prev;
+            // BLOQUEIO TOTAL: Se o ID já estiver na lista, descarta sem piedade
+            if (newMsgId && prev.some(m => m.id === newMsgId)) return prev;
+            
+            // Backup por conteúdo (caso o ID falhe por algum motivo raro)
+            if (!newMsgId && prev.some(m => m.message === payload.new.content && Math.abs(m.date - Math.floor(new Date(payload.new.created_at).getTime() / 1000)) < 5)) return prev;
+
+            const newMsg = {
+              id: newMsgId,
+              message: payload.new.content,
+              out: payload.new.is_from_me,
+              date: Math.floor(new Date(payload.new.created_at).getTime() / 1000),
+              hasMedia: false, 
+              rawMessage: null 
+            };
             return [...prev, newMsg];
           });
 
           setTimeout(() => waMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
         }
+
       )
       .subscribe();
 

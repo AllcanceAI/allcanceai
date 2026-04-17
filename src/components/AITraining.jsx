@@ -90,9 +90,7 @@ export const AITraining = ({ userId }) => {
           messages: [
             { 
               role: "system", 
-              content: `Responda apenas em JSON. Você é um Engenheiro de Prompts. Ajude a refinar este prompt atual. 
-
-JSON:
+              content: `Responda apenas em JSON estruturado:
 { "update_prompt": boolean, "system_prompt": "string", "message": "string" }
 
 Prompt Atual:
@@ -103,10 +101,10 @@ ${currentPrompt}
             ...historicalMessages.slice(-4),
             { role: "user", content: userText }
           ],
-          temperature: 0.3,
-          max_tokens: 2000
+          response_format: { type: "json_object" },
+          temperature: 0.1,
+          max_tokens: 3000
         })
-
       });
 
       if (!response.ok) {
@@ -122,9 +120,11 @@ ${currentPrompt}
       if (content) {
         let jsonResponse;
         try {
-          jsonResponse = JSON.parse(content);
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          jsonResponse = JSON.parse(jsonMatch ? jsonMatch[0] : content);
         } catch (e) {
-          throw new Error("Groq não retornou JSON válido.");
+          console.warn("⚠️ Fallback para texto plano.");
+          jsonResponse = { update_prompt: false, message: content };
         }
 
         const shouldUpdate = jsonResponse.update_prompt === true;

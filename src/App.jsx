@@ -285,6 +285,9 @@ function App() {
   const [tgAvatarUrls, setTgAvatarUrls] = useState({}) // { id: url }
   const [tgMediaUrls, setTgMediaUrls] = useState({}) // { msgId: url }
   const tgMessagesEndRef = useRef(null)
+  
+  // Referência para o canal de Realtime do WhatsApp (evita duplicação de listeners)
+  const waChannelRef = useRef(null);
 
   // --- PILOTO AUTOMÁTICO (GROQ) ---
   useEffect(() => {
@@ -316,10 +319,16 @@ function App() {
   useEffect(() => {
     if (!selectedWaChat || waStatus !== 'connected') return;
 
-    console.log("📡 [Realtime] Iniciando radar para:", selectedWaChat.id);
+    // Se já existir um canal aberto, remove ele antes de criar o novo
+    if (waChannelRef.current) {
+      console.log("♻️ [Realtime] Limpando conexão anterior...");
+      supabase.removeChannel(waChannelRef.current);
+    }
+
+    console.log("📡 [Realtime] Abrindo radar único para:", selectedWaChat.id);
 
     const channel = supabase
-      .channel('wa-realtime-global')
+      .channel(`chat-unique-${selectedWaChat.id}`)
       .on(
         'postgres_changes',
         {
@@ -361,12 +370,15 @@ function App() {
       )
       .subscribe();
 
+    waChannelRef.current = channel;
 
     return () => {
-      console.log("📴 [Realtime] Desconectando radar antigo...");
-      supabase.removeChannel(channel);
+      if (waChannelRef.current) {
+        supabase.removeChannel(waChannelRef.current);
+        waChannelRef.current = null;
+      }
     };
-  }, [selectedWaChat, waStatus, waInstanceName]);
+  }, [selectedWaChat?.id, waStatus, waInstanceName]);
 
   
   const [tokenUsage, setTokenUsage] = useState({ 

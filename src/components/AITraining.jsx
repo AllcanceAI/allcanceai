@@ -86,42 +86,42 @@ export const AITraining = ({ userId }) => {
           "Authorization": `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`
         },
         body: JSON.stringify({
-          model: import.meta.env.VITE_GROQ_MODEL || "llama-3.3-70b-versatile",
+          model: "llama-3.3-70b-versatile",
           messages: [
             { 
               role: "system", 
-              content: `Sua tarefa é responder SEMPRE em formato JSON. Você é um Consultor de IA e Engenheiro de Prompts. Ajude o usuário a refinar o "System Prompt" do robô de atendimento dele.
+              content: `Você é um Consultor de IA e Engenheiro de Prompts. Ajude o usuário a refinar o "System Prompt" do robô de atendimento do WhatsApp dele.
 
-REGRAS DE RESPOSTA (SEM EXCEÇÃO):
-1. Retorne APENAS um objeto JSON válido.
-2. Não escreva nada fora do JSON.
-3. Se o usuário sugerir uma mudança, primeiro sugira a regra em "message" e mantenha "update_prompt": false.
-4. Se o usuário confirmar (ex: "pode salvar", "sim", "atualize"), defina "update_prompt": true e em "system_prompt" coloque o NOVO PROMPT COMPLETO.
+IMPORTANTE: Responda APENAS com um objeto JSON. Não use blocos de código markdown.
+Estrutura do JSON:
+{
+  "update_prompt": boolean,
+  "system_prompt": "O novo prompt completo (se update=true)",
+  "message": "Sua resposta conversacional para o usuário"
+}
 
 Prompt Atual:
 """
 ${currentPrompt}
-"""
-
-Estrutura do JSON esperado:
-{
-  "update_prompt": boolean,
-  "system_prompt": "string",
-  "message": "string"
-}`
+"""`
             },
             ...historicalMessages,
             { role: "user", content: userText }
           ],
-          response_format: { type: "json_object" },
           temperature: 0.3,
-          max_tokens: 1500
+          max_tokens: 2000
         })
-
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("❌ Groq Error Body:", errorData);
+        throw new Error(`Groq API Error: ${errorData.error?.message || response.statusText}`);
+      }
 
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content;
+
       
       if (content) {
         let jsonResponse;

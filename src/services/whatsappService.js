@@ -233,18 +233,25 @@ export const getWaMessages = async (instanceName, remoteJid) => {
     // O Backend do Evolution já filtra as conversas adequadamente na query 'where'.
     
     return msgList.map(m => {
+      // Extrai a mensagem real, desempacotando caso venha de um celular sincronizado (WhatsApp Web / Outro celular)
+      const realMsg = m.message?.deviceSentMessage?.message 
+                   || m.message?.documentWithCaptionMessage?.message 
+                   || m.message;
+
       // Pega o texto da mensagem com segurança (texto simples, estendido ou legenda de mídia)
-      const textContent = m.message?.conversation 
-        || m.message?.extendedTextMessage?.text 
-        || m.message?.imageMessage?.caption
-        || "[Mídia/Outro Formato]";
+      const textContent = realMsg?.conversation 
+        || realMsg?.extendedTextMessage?.text 
+        || realMsg?.imageMessage?.caption
+        || realMsg?.videoMessage?.caption
+        || realMsg?.documentMessage?.caption
+        || "";
 
       return {
         message: textContent,
         out: m.key?.fromMe,
         date: m.messageTimestamp,
-        hasMedia: !!(m.message?.audioMessage || m.message?.imageMessage || m.message?.videoMessage || m.message?.documentMessage || m.message?.stickerMessage),
-        mediaType: m.message?.audioMessage ? 'audio' : m.message?.imageMessage ? 'image' : m.message?.videoMessage ? 'video' : m.message?.documentMessage ? 'document' : m.message?.stickerMessage ? 'sticker' : null,
+        hasMedia: !!(realMsg?.audioMessage || realMsg?.imageMessage || realMsg?.videoMessage || realMsg?.documentMessage || realMsg?.stickerMessage),
+        mediaType: realMsg?.audioMessage ? 'audio' : realMsg?.imageMessage ? 'image' : realMsg?.videoMessage ? 'video' : realMsg?.documentMessage ? 'document' : realMsg?.stickerMessage ? 'sticker' : null,
         rawMessage: m
       };
     }).reverse();

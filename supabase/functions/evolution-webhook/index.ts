@@ -239,7 +239,7 @@ serve(async (req) => {
 
             if (sendRes.ok) {
               const sendData = await sendRes.json();
-              await supabase.from('wa_messages').upsert({
+              await supabase.from('wa_messages').insert({
                 instance_name: instanceName,
                 remote_jid: remoteJid,
                 message_id: sendData.key?.id || `ai-${Date.now()}`,
@@ -247,7 +247,7 @@ serve(async (req) => {
                 is_from_me: true,
                 content: chunk.trim(),
                 message_type: "text"
-              }, { onConflict: 'message_id' });
+              });
             }
 
             if (chunks.length > 1) await new Promise(r => setTimeout(r, 3000));

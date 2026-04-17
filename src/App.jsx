@@ -340,10 +340,10 @@ function App() {
         },
         async (payload) => {
           const incomingJid = payload.new.remote_jid;
-          const isMeSync = payload.new.is_from_me && incomingJid?.includes('@lid');
-          const isCurrentChat = incomingJid === selectedWaChat.id;
+          const isCurrentChat = (incomingJid === selectedWaChat.id);
 
-          if (!isCurrentChat && !isMeSync) return;
+          // FILTRO ABSOLUTO: Se não for para este chat, ignore.
+          if (!isCurrentChat) return;
           if (payload.new.instance_name !== waInstanceName) return;
 
           const newMsgId = payload.new.message_id;

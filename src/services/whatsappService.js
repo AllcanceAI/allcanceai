@@ -277,6 +277,7 @@ export const getWaMessages = async (instanceName, remoteJid) => {
       }
 
       return {
+        id: m.key?.id,
         message: textContent,
         out: m.key?.fromMe,
         date: m.messageTimestamp,

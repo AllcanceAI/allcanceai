@@ -4,6 +4,8 @@
  * Preparada para replicar a estrutura do Telegram CRM.
  */
 
+import { supabase } from '../supabaseClient';
+
 const BASE_URL = import.meta.env.VITE_EVOLUTION_URL;
 const GLOBAL_KEY = import.meta.env.VITE_EVOLUTION_GLOBAL_KEY;
 
@@ -230,6 +232,21 @@ export const getWaMessages = async (instanceName, remoteJid) => {
     else if (data.messages && Array.isArray(data.messages)) msgList = data.messages;
     else if (data.records && Array.isArray(data.records)) msgList = data.records;
     
+    // -- Buscando transcrições no Supabase para não sumirem no Refresh --
+    let transcriptions = {};
+    try {
+      const { data: supaMsgs } = await supabase
+        .from('wa_messages')
+        .select('message_id, content')
+        .eq('instance_name', instanceName)
+        .eq('remote_jid', remoteJid)
+        .like('content', '%TRANSCRITA%');
+        
+      if (supaMsgs) {
+        supaMsgs.forEach(s => transcriptions[s.message_id] = s.content);
+      }
+    } catch(e) {}
+
     // O Backend do Evolution já filtra as conversas adequadamente na query 'where'.
     
     return msgList.map(m => {
@@ -239,12 +256,16 @@ export const getWaMessages = async (instanceName, remoteJid) => {
                    || m.message;
 
       // Pega o texto da mensagem com segurança (texto simples, estendido ou legenda de mídia)
-      const textContent = realMsg?.conversation 
+      let textContent = realMsg?.conversation 
         || realMsg?.extendedTextMessage?.text 
         || realMsg?.imageMessage?.caption
         || realMsg?.videoMessage?.caption
         || realMsg?.documentMessage?.caption
         || "";
+        
+      if (transcriptions[m.key?.id]) {
+         textContent = transcriptions[m.key?.id];
+      }
 
       return {
         message: textContent,

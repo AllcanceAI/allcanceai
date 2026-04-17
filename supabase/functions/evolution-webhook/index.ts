@@ -56,21 +56,39 @@ serve(async (req) => {
           || realMsg?.documentMessage?.caption
           || "";
 
-      console.log(`💬 Mensagem de ${remoteJid}: "${textContent}" (isFromMe: ${isFromMe})`)
+      console.log(`💬 Conteúdo Extraído: "${textContent}" | isFromMe: ${isFromMe} | Tem Groq: ${!!groqKey}`)
 
       let finalContent = textContent;
 
       // --- TRANSCRIÇÃO DE ÁUDIO (WHISPER) ---
-      if (!isFromMe && !finalContent.trim() && realMsg?.audioMessage && groqKey) {
-        console.log("🎙️ [Áudio Detectado] Baixando pacote para transcrição Whisper...");
+      const hasAudio = !!(realMsg?.audioMessage);
+      if (!isFromMe && !finalContent.trim() && hasAudio && groqKey) {
+        const fullEvoUrl = evoUrl?.includes('http') ? evoUrl : `http://2.24.203.75:8080`;
+        console.log(`🎙️ [Áudio Detectado] Baixando de: ${fullEvoUrl}/chat/getBase64FromMediaMessage/${instanceName}`);
+        
         try {
-          const b64res = await fetch(`${evoUrl}/chat/getBase64FromMediaMessage/${instanceName}`, {
+          const b64res = await fetch(`${fullEvoUrl}/chat/getBase64FromMediaMessage/${instanceName}`, {
             method: 'POST',
             headers: { 'apikey': evoKey!, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: msg }) // Manda a msg completa para a Evolution baixar
+            body: JSON.stringify({ message: msg })
           });
+          
+          if (!b64res.ok) {
+            const errTxt = await b64res.text();
+            console.error(`❌ Erro Evolution (${b64res.status}): ${errTxt}`);
+            return new Response("OK", { status: 200 });
+          }
+          
+          const contentType = b64res.headers.get("content-type");
+          if (!contentType || !contentType.includes("application/json")) {
+             const rawRes = await b64res.text();
+             console.error(`❌ Resposta da Evolution não é JSON! Recebido: ${rawRes.substring(0,100)}`);
+             return new Response("OK", { status: 200 });
+          }
+
           const b64data = await b64res.json();
           if (b64data && b64data.base64) {
+             console.log("📦 [Download OK] Tamanho Base64:", b64data.base64.length);
              const rawB64 = b64data.base64.replace(/^data:audio\/\w+;base64,/, '');
              const byteCharacters = atob(rawB64);
              const byteNumbers = new Array(byteCharacters.length);
@@ -80,29 +98,36 @@ serve(async (req) => {
              const byteArray = new Uint8Array(byteNumbers);
              const audioBlob = new Blob([byteArray], { type: 'audio/ogg' });
              
-             console.log("🪄 [Whisper] Enviando processamento neural para Groq...");
+             console.log("🪄 [Whisper] Enviando para Groq (whisper-large-v3)...");
              const formData = new FormData();
              formData.append('file', audioBlob, 'audio.ogg');
              formData.append('model', 'whisper-large-v3');
              formData.append('language', 'pt');
-             formData.append('response_format', 'json');
              
              const txRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${groqKey}` },
                 body: formData
              });
+             
+             if (!txRes.ok) {
+               const txErr = await txRes.text();
+               console.error(`❌ Erro Groq Whisper: Status ${txRes.status} | Resposta: ${txErr}`);
+             }
+             
              const txData = await txRes.json();
              if (txData.text) {
                 finalContent = `[MENSAGEM DE ÁUDIO TRANSCRITA PELO SISTEMA]: "${txData.text}"`;
-                console.log("📝 [Transcrição OK]:", finalContent);
-             } else {
-                console.error("❌ Retorno do Whisper vazio ou falho:", txData);
+                console.log("✅ [Transcrição Sucesso]:", txData.text);
              }
+          } else {
+             console.warn("⚠️ Evolutuion retornou JSON sem o campo 'base64'.");
           }
         } catch(audioErr) {
-          console.error("❌ Erro fatal ao transcrever áudio:", audioErr);
+          console.error("❌ Erro catastrófico na transcrição:", audioErr.message);
         }
+      } else if (hasAudio && !groqKey) {
+        console.warn("⚠️ Áudio recebido mas GROQ_API_KEY não foi encontrada nos Secrets da Supabase!");
       }
 
       // Salva no banco wa_messages DEPOIS da transcrição (Para o front-end pegar via Realtime perfeitamente)

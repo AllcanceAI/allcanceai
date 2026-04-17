@@ -222,17 +222,56 @@ export const ChannelUI = ({
             </div>
 
             <div className="tg-messages-area">
-              {messages.map((msg, i) => (
-                <div key={i} className={`tg-bubble ${msg.out ? 'out' : 'in'}`}>
-                  {msg.hasMedia && platform === 'wa' && (
-                    <div style={{ marginBottom: msg.message ? '0.5rem' : '0' }}>
-                      <WaMediaRenderer message={msg} fetchMediaBase64={fetchMediaBase64} />
-                    </div>
-                  )}
-                  {msg.message && <p>{msg.message}</p>}
-                  <span className="tg-bubble-time">{new Date(msg.date * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-              ))}
+              {messages.map((msg, i) => {
+                const isTranscription = msg.message && msg.message.includes('[MENSAGEM DE ÁUDIO TRANSCRITA PELO SISTEMA]');
+                const cleanMessage = isTranscription 
+                  ? msg.message.replace('[MENSAGEM DE ÁUDIO TRANSCRITA PELO SISTEMA]:', '').replace(/^"(.*)"$/, '$1').trim()
+                  : msg.message;
+
+                return (
+                  <div key={i} className={`tg-bubble ${msg.out ? 'out' : 'in'}`}>
+                    {msg.hasMedia && platform === 'wa' && (
+                      <div style={{ marginBottom: cleanMessage ? '0.6rem' : '0' }}>
+                        <WaMediaRenderer message={msg} fetchMediaBase64={fetchMediaBase64} />
+                      </div>
+                    )}
+                    
+                    {cleanMessage && (
+                      isTranscription ? (
+                        <div style={{ 
+                          background: 'rgba(255, 255, 255, 0.05)', 
+                          padding: '8px 12px', 
+                          borderRadius: '8px', 
+                          borderLeft: '3px solid #0088cc',
+                          marginTop: '4px'
+                        }}>
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '6px', 
+                            fontSize: '0.65rem', 
+                            textTransform: 'uppercase', 
+                            letterSpacing: '0.5px',
+                            color: '#0088cc',
+                            marginBottom: '4px',
+                            fontWeight: 'bold'
+                          }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                            Transcrição IA
+                          </div>
+                          <p style={{ margin: 0, fontSize: '0.9rem', fontStyle: 'italic', opacity: 0.9, lineHeight: '1.4' }}>
+                            "{cleanMessage}"
+                          </p>
+                        </div>
+                      ) : (
+                        <p>{cleanMessage}</p>
+                      )
+                    )}
+                    
+                    <span className="tg-bubble-time">{new Date(msg.date * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                );
+              })}
               <div ref={messagesEndRef} />
             </div>
 

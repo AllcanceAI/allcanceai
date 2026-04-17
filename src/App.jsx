@@ -655,6 +655,8 @@ function App() {
             }}
             onSelectChat={async (chat) => {
               if (!chat) { setSelectedWaChat(null); return; }
+              setWaMessages([]); // Limpa a tela imediatamente para evitar cruzamento visual
+              setWaInput('');
               setSelectedWaChat(chat);
               setWaLoading(true);
               const msgs = await getWaMessages(waInstanceName, chat.id);

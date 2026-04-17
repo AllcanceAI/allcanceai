@@ -247,9 +247,18 @@ export const getWaMessages = async (instanceName, remoteJid) => {
       }
     } catch(e) {}
 
-    // O Backend do Evolution já filtra as conversas adequadamente na query 'where'.
-    
-    return msgList.map(m => {
+    // -- Filtro de Segurança Inteligente --
+    // Filtra mensagens que pertençam a OUTROS contatos (JIDs diferentes), 
+    // mas PERMITE mensagens com final '@lid' (que são os envios sincronizados do seu próprio celular).
+    const smartFilteredList = msgList.filter(m => {
+      const mJid = m.key?.remoteJid;
+      if (!mJid) return true;
+      if (mJid === remoteJid) return true;
+      if (mJid.endsWith('@lid')) return true; // Permite sincronia do celular
+      return false; // Bloqueia se for um JID de outro cliente (ex: 5511... != 5515...)
+    });
+
+    return smartFilteredList.map(m => {
       // Extrai a mensagem real, desempacotando caso venha de um celular sincronizado (WhatsApp Web / Outro celular)
       const realMsg = m.message?.deviceSentMessage?.message 
                    || m.message?.documentWithCaptionMessage?.message 

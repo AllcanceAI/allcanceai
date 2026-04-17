@@ -43,9 +43,17 @@ serve(async (req) => {
 
       const remoteJid = msg.key?.remoteJid;
       const isFromMe = msg.key?.fromMe || false;
-      const textContent = msg.message?.conversation 
-          || msg.message?.extendedTextMessage?.text 
-          || msg.message?.imageMessage?.caption
+
+      // Extrai a mensagem real (desempacota deviceSentMessage)
+      const realMsg = msg.message?.deviceSentMessage?.message 
+                   || msg.message?.documentWithCaptionMessage?.message 
+                   || msg.message;
+
+      const textContent = realMsg?.conversation 
+          || realMsg?.extendedTextMessage?.text 
+          || realMsg?.imageMessage?.caption
+          || realMsg?.videoMessage?.caption
+          || realMsg?.documentMessage?.caption
           || "";
 
       console.log(`💬 Mensagem de ${remoteJid}: "${textContent}" (isFromMe: ${isFromMe})`)
@@ -53,13 +61,13 @@ serve(async (req) => {
       let finalContent = textContent;
 
       // --- TRANSCRIÇÃO DE ÁUDIO (WHISPER) ---
-      if (!isFromMe && !finalContent.trim() && msg.message?.audioMessage && groqKey) {
+      if (!isFromMe && !finalContent.trim() && realMsg?.audioMessage && groqKey) {
         console.log("🎙️ [Áudio Detectado] Baixando pacote para transcrição Whisper...");
         try {
           const b64res = await fetch(`${evoUrl}/chat/getBase64FromMediaMessage/${instanceName}`, {
             method: 'POST',
             headers: { 'apikey': evoKey!, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: msg })
+            body: JSON.stringify({ message: msg }) // Manda a msg completa para a Evolution baixar
           });
           const b64data = await b64res.json();
           if (b64data && b64data.base64) {

@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/evo/:path*",
+      "destination": "https://allcance.vaibly.com.br/:path*"
+    }
+  ]
+}

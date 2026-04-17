@@ -1,4 +1,53 @@
-import React from 'react';
+import React, { useState } from 'react';
+
+const WaMediaRenderer = ({ message, fetchMediaBase64 }) => {
+  const [base64, setBase64] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  const loadMedia = async () => {
+    setLoading(true);
+    const data = await fetchMediaBase64(message);
+    if(data) setBase64(data);
+    else setError(true);
+    setLoading(false);
+  };
+
+  if (base64) {
+    if (message.mediaType === 'audio') {
+       return <audio src={base64} controls style={{ maxWidth: '100%', height: '40px', borderRadius: '8px' }} />;
+    } else if (message.mediaType === 'image' || message.mediaType === 'sticker') {
+       return <img src={base64} style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '8px', objectFit: 'contain' }} alt="Media" />;
+    } else if (message.mediaType === 'video') {
+       return <video src={base64} controls style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '8px' }} />;
+    } else {
+       return <a href={base64} download="documento" style={{ color: '#0088cc', textDecoration: 'underline' }}>Baixar Mídia</a>;
+    }
+  }
+
+  return (
+    <div 
+      onClick={loading ? undefined : loadMedia} 
+      style={{ 
+        padding: '0.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', 
+        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', 
+        border: '1px solid rgba(255,255,255,0.1)' 
+      }}>
+      <div style={{ 
+         width: '32px', height: '32px', borderRadius: '50%', background: '#0088cc', 
+         display: 'flex', alignItems: 'center', justifyContent: 'center' 
+      }}>
+        {loading ? <div className="pro-spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }}></div> : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        )}
+      </div>
+      <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>
+        {error ? 'Erro. Tentar Novo?' : `Ver ${message.mediaType === 'audio' ? 'Áudio' : message.mediaType === 'image' ? 'Imagem' : 'Mídia'}`}
+      </span>
+    </div>
+  );
+};
+
 
 /**
  * ChannelUI Component
@@ -37,7 +86,8 @@ export const ChannelUI = ({
   RightSidebar = () => null,
   CrmMenu = () => null,
   crmMenuState = { visible: false },
-  closeCrmMenu = () => {}
+  closeCrmMenu = () => {},
+  fetchMediaBase64 = async () => null
 }) => {
   return (
     <div className={`tg-interface ${messages.length > 0 ? 'mobile-chat-active' : ''}`}>
@@ -174,7 +224,12 @@ export const ChannelUI = ({
             <div className="tg-messages-area">
               {messages.map((msg, i) => (
                 <div key={i} className={`tg-bubble ${msg.out ? 'out' : 'in'}`}>
-                  <p>{msg.message}</p>
+                  {msg.hasMedia && platform === 'wa' && (
+                    <div style={{ marginBottom: msg.message ? '0.5rem' : '0' }}>
+                      <WaMediaRenderer message={msg} fetchMediaBase64={fetchMediaBase64} />
+                    </div>
+                  )}
+                  {msg.message && <p>{msg.message}</p>}
                   <span className="tg-bubble-time">{new Date(msg.date * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
               ))}

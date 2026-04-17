@@ -242,12 +242,35 @@ export const getWaMessages = async (instanceName, remoteJid) => {
       return {
         message: textContent,
         out: m.key?.fromMe,
-        date: m.messageTimestamp
+        date: m.messageTimestamp,
+        hasMedia: !!(m.message?.audioMessage || m.message?.imageMessage || m.message?.videoMessage || m.message?.documentMessage || m.message?.stickerMessage),
+        mediaType: m.message?.audioMessage ? 'audio' : m.message?.imageMessage ? 'image' : m.message?.videoMessage ? 'video' : m.message?.documentMessage ? 'document' : m.message?.stickerMessage ? 'sticker' : null,
+        rawMessage: m
       };
     }).reverse();
   } catch (error) {
     console.error("Erro ao buscar mensagens do histórico:", error);
     return [];
+  }
+};
+
+/**
+ * Busca e decodifica a mídia de uma mensagem convertendo para Base64 (Fotos/Áudios)
+ */
+export const fetchWaMediaBase64 = async (instanceName, rawMessage) => {
+  if (!BASE_URL || !rawMessage) return null;
+  try {
+    const response = await fetch(`${BASE_URL}/chat/getBase64FromMediaMessage/${instanceName}`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ message: rawMessage })
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.base64 || null; // ex: "data:audio/ogg;base64,......."
+  } catch (error) {
+    console.error("Erro ao buscar Base64 da mídia:", error);
+    return null;
   }
 };
 

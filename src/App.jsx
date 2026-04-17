@@ -3,7 +3,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import { startQRLogin, getSavedSession, sendPhoneCode, verifyPhoneCode, getDialogs, getChatMessages, sendTelegramMessage, downloadMediaAsUrl, getProfilePhotoUrl, markChatAsRead, listenToNewMessages } from './services/telegramService'
-import { getWaDialogs, getWaMessages, sendText, getWaQrCode, createWaInstance, fetchWaInstances, deleteWaInstance, getWaProfilePic } from './services/whatsappService'
+import { getWaDialogs, getWaMessages, sendText, getWaQrCode, createWaInstance, fetchWaInstances, deleteWaInstance, getWaProfilePic, fetchWaMediaBase64 } from './services/whatsappService'
 import { generateAiResponse } from './services/aiService'
 import { useCRM } from './components/crm/CRMContext'
 import RightSidebar from './components/crm/RightSidebar'
@@ -683,6 +683,7 @@ function App() {
             CrmMenu={CrmMenu}
             crmMenuState={crmMenu}
             closeCrmMenu={() => setCrmMenu({ ...crmMenu, visible: false })}
+            fetchMediaBase64={async (msg) => await fetchWaMediaBase64(waInstanceName, msg.rawMessage)}
           />
         ) : (
           <div className="tab-view">

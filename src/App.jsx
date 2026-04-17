@@ -311,6 +311,53 @@ function App() {
       });
     }
   }, [telegramStatus, globalAiEnabled, disabledAiChatIds, selectedTgChat]);
+
+  // --- REALTIME LISTENER (WhatsApp) ---
+  useEffect(() => {
+    if (!selectedWaChat || waStatus !== 'connected') return;
+
+    console.log("📡 [Realtime] Iniciando radar para:", selectedWaChat.id);
+
+    const channel = supabase
+      .channel(`chat-${selectedWaChat.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'wa_messages',
+          filter: `remote_jid=eq.${selectedWaChat.id}`
+        },
+        async (payload) => {
+          console.log("📩 [Realtime] Nova mensagem recebida:", payload.new);
+          
+          const newMsg = {
+            message: payload.new.content,
+            out: payload.new.is_from_me,
+            date: Math.floor(new Date(payload.new.created_at).getTime() / 1000),
+            hasMedia: false, 
+            rawMessage: null 
+          };
+
+          // Evita duplicidade se o front já tiver inserido localmente ao enviar
+          setWaMessages(prev => {
+            const alreadyExists = prev.some(m => m.message === newMsg.message && Math.abs(m.date - newMsg.date) < 2);
+            if (alreadyExists) return prev;
+            return [...prev, newMsg];
+          });
+
+          // Scroll suave
+          setTimeout(() => waMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log("📴 [Realtime] Desconectando radar antigo...");
+      supabase.removeChannel(channel);
+    };
+  }, [selectedWaChat, waStatus, waInstanceName]);
+
   
   const [tokenUsage, setTokenUsage] = useState({ 
     monthlyUsed: 0, 

@@ -22,6 +22,7 @@ serve(async (req) => {
     const groqKey = Deno.env.get('GROQ_API_KEY')
     const evoUrl = Deno.env.get('EVOLUTION_URL')
     const evoKey = Deno.env.get('EVOLUTION_GLOBAL_KEY')
+    const fullEvoUrl = evoUrl?.includes('http') ? evoUrl : `http://2.24.203.75:8080`;
     
     const supabase = createClient(supabaseUrl, supabaseKey)
 
@@ -69,7 +70,6 @@ serve(async (req) => {
       // --- TRANSCRIÇÃO DE ÁUDIO (WHISPER) ---
       const hasAudio = !!(realMsg?.audioMessage);
       if (!isFromMe && !finalContent.trim() && hasAudio && groqKey) {
-        const fullEvoUrl = evoUrl?.includes('http') ? evoUrl : `http://2.24.203.75:8080`;
         console.log(`🎙️ [Áudio Detectado] Baixando de: ${fullEvoUrl}/chat/getBase64FromMediaMessage/${instanceName}`);
         
         try {
@@ -228,7 +228,6 @@ serve(async (req) => {
 
         if (aiResult) {
           const chunks = aiResult.split('\n\n').filter((c: string) => c.trim().length > 0);
-          const fullEvoUrl = evoUrl?.includes('http') ? evoUrl : `http://2.24.203.75:8080`;
           
           for (const chunk of chunks) {
             console.log(`📤 [Evolution] Enviando bolha...`)

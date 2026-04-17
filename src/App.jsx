@@ -327,8 +327,10 @@ function App() {
 
     console.log("📡 [Realtime] Abrindo radar único para:", selectedWaChat.id);
 
+    // Nome do canal limpo (sem @ ou . que quebram o realtime)
+    const cleanId = selectedWaChat.id.replace(/[^a-zA-Z0-0]/g, '');
     const channel = supabase
-      .channel(`chat-unique-${selectedWaChat.id}`)
+      .channel(`chat_unique_${cleanId}`)
       .on(
         'postgres_changes',
         {

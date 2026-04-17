@@ -231,25 +231,11 @@ serve(async (req) => {
           const fullEvoUrl = evoUrl?.includes('http') ? evoUrl : `http://2.24.203.75:8080`;
           for (const chunk of chunks) {
             console.log(`📤 [Evolution] Enviando bolha...`)
-            const sendRes = await fetch(`${fullEvoUrl}/message/sendText/${instanceName}`, {
+            await fetch(`${fullEvoUrl}/message/sendText/${instanceName}`, {
               method: 'POST',
               headers: { 'apikey': evoKey!, 'Content-Type': 'application/json' },
               body: JSON.stringify({ number: remoteJid.split('@')[0], text: chunk.trim() })
             });
-
-            // SALVA A RESPOSTA DA IA NO BANCO (Para o Realtime do front-end enxergar)
-            if (sendRes.ok) {
-              const sendData = await sendRes.json();
-              await supabase.from('wa_messages').insert({
-                instance_name: instanceName,
-                remote_jid: remoteJid,
-                message_id: sendData.key?.id || `ai-${Date.now()}`,
-                push_name: "Assistente IA",
-                is_from_me: true,
-                content: chunk.trim(),
-                message_type: "text"
-              });
-            }
 
             if (chunks.length > 1) await new Promise(r => setTimeout(r, 3000));
           }

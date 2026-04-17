@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/evo-api/:path*",
-      "destination": "https://allcance.vaibly.com.br/:path*"
+      "destination": "http://2.24.203.75:8080/:path*"
     },
     {
       "source": "/(.*)",

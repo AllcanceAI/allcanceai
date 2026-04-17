@@ -274,7 +274,18 @@ export const fetchWaMediaBase64 = async (instanceName, rawMessage) => {
     });
     if (!response.ok) return null;
     const data = await response.json();
-    return data.base64 || null; // ex: "data:audio/ogg;base64,......."
+    let b64 = data.base64 || null;
+    
+    if (b64 && !b64.startsWith('data:')) {
+      const rm = rawMessage.message?.deviceSentMessage?.message || rawMessage.message?.documentWithCaptionMessage?.message || rawMessage.message;
+      let prefix = 'data:application/octet-stream;base64,';
+      if (rm?.audioMessage) prefix = 'data:audio/ogg;base64,';
+      else if (rm?.imageMessage) prefix = 'data:image/jpeg;base64,';
+      else if (rm?.videoMessage) prefix = 'data:video/mp4;base64,';
+      else if (rm?.stickerMessage) prefix = 'data:image/webp;base64,';
+      b64 = prefix + b64;
+    }
+    return b64;
   } catch (error) {
     console.error("Erro ao buscar Base64 da mídia:", error);
     return null;

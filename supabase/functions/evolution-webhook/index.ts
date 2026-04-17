@@ -50,17 +50,6 @@ serve(async (req) => {
 
       console.log(`💬 Mensagem de ${remoteJid}: "${textContent}" (isFromMe: ${isFromMe})`)
 
-      // Salva no banco wa_messages
-      await supabase.from('wa_messages').insert({
-        instance_name: instanceName,
-        remote_jid: remoteJid,
-        message_id: msg.key?.id,
-        push_name: msg.pushName || "Contato",
-        is_from_me: isFromMe,
-        content: textContent,
-        message_type: "text"
-      });
-
       let finalContent = textContent;
 
       // --- TRANSCRIÇÃO DE ÁUDIO (WHISPER) ---
@@ -74,8 +63,14 @@ serve(async (req) => {
           });
           const b64data = await b64res.json();
           if (b64data && b64data.base64) {
-             const dataUrl = b64data.base64.startsWith('data:') ? b64data.base64 : `data:audio/ogg;base64,${b64data.base64}`;
-             const audioBlob = await (await fetch(dataUrl)).blob();
+             const rawB64 = b64data.base64.replace(/^data:audio\/\w+;base64,/, '');
+             const byteCharacters = atob(rawB64);
+             const byteNumbers = new Array(byteCharacters.length);
+             for (let i = 0; i < byteCharacters.length; i++) {
+                 byteNumbers[i] = byteCharacters.charCodeAt(i);
+             }
+             const byteArray = new Uint8Array(byteNumbers);
+             const audioBlob = new Blob([byteArray], { type: 'audio/ogg' });
              
              console.log("🪄 [Whisper] Enviando processamento neural para Groq...");
              const formData = new FormData();
@@ -93,8 +88,6 @@ serve(async (req) => {
              if (txData.text) {
                 finalContent = `[MENSAGEM DE ÁUDIO TRANSCRITA PELO SISTEMA]: "${txData.text}"`;
                 console.log("📝 [Transcrição OK]:", finalContent);
-                // Atualiza a tabela para que o painel e o contexto reflitam a transcrição
-                await supabase.from('wa_messages').update({ content: finalContent }).eq('message_id', msg.key?.id).eq('instance_name', instanceName);
              } else {
                 console.error("❌ Retorno do Whisper vazio ou falho:", txData);
              }
@@ -103,6 +96,17 @@ serve(async (req) => {
           console.error("❌ Erro fatal ao transcrever áudio:", audioErr);
         }
       }
+
+      // Salva no banco wa_messages DEPOIS da transcrição (Para o front-end pegar via Realtime perfeitamente)
+      await supabase.from('wa_messages').insert({
+        instance_name: instanceName,
+        remote_jid: remoteJid,
+        message_id: msg.key?.id,
+        push_name: msg.pushName || "Contato",
+        is_from_me: isFromMe,
+        content: finalContent,
+        message_type: "text"
+      });
 
       // --- DISPARO DA IA ---
       if (!isFromMe && finalContent.trim()) {

@@ -229,15 +229,83 @@
 }
 
 .prompt-modal-body {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.manual-prompt-editor {
+  width: 100%;
+  height: 400px;
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   padding: 1.5rem;
-  overflow-y: auto;
-  color: #ccc;
-  font-size: 0.9rem;
+  color: #10b981;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 0.95rem;
   line-height: 1.6;
-  white-space: pre-wrap;
+  resize: none;
+  outline: none;
+  tab-size: 4;
+}
+
+.manual-prompt-editor::-webkit-scrollbar {
+  width: 6px;
+}
+.manual-prompt-editor::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+}
+
+.prompt-modal-footer {
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
   background: rgba(0, 0, 0, 0.2);
   border-bottom-left-radius: 20px;
   border-bottom-right-radius: 20px;
+}
+
+.cancel-manual-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #888;
+  padding: 0.6rem 1.2rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cancel-manual-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.save-manual-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+}
+.save-manual-btn:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+}
+.save-manual-btn:disabled {
+  background: #333;
+  color: #666;
+  box-shadow: none;
+  cursor: not-allowed;
 }
 .prompt-modal-body::-webkit-scrollbar {
   width: 6px;

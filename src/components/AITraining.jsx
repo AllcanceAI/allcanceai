@@ -9,6 +9,8 @@ export const AITraining = ({ userId }) => {
   const [instruction, setInstruction] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [tempPrompt, setTempPrompt] = useState(''); // Para edição manual no modal
+  const [isSavingManual, setIsSavingManual] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Efeito 1: Busca o System Prompt no Supabase
@@ -62,6 +64,29 @@ export const AITraining = ({ userId }) => {
       setChatHistory([]);
       const storageKey = `ai_training_chat_${userId}_${channel}`;
       localStorage.removeItem(storageKey);
+    }
+  };
+
+  const handleManualSave = async () => {
+    if (!userId || !tempPrompt.trim()) return;
+    setIsSavingManual(true);
+    try {
+      const { error: dbError } = await supabase.from('ai_training').upsert(
+        { user_id: userId, channel, system_prompt: tempPrompt },
+        { onConflict: 'user_id, channel' }
+      );
+
+      if (!dbError) {
+        setCurrentPrompt(tempPrompt);
+        alert("✅ Prompt atualizado manualmente com sucesso!");
+        setIsPromptVisible(false);
+      } else {
+        alert("🚨 Erro ao salvar: " + dbError.message);
+      }
+    } catch (err) {
+      alert("🚨 Erro de conexão.");
+    } finally {
+      setIsSavingManual(false);
     }
   };
 
@@ -202,14 +227,14 @@ SAÍDA OBRIGATÓRIA (JSON):
       <div className="ai-training-body">
         
         {/* Em vez de Acordion Inline, usar botão nativo simples que aciona o Modal */}
-        <div className="ai-prompt-visor-wrapper" onClick={() => setIsPromptVisible(true)}>
+        <div className="ai-prompt-visor-wrapper" onClick={() => { setTempPrompt(currentPrompt); setIsPromptVisible(true); }}>
           <div className="ai-prompt-visor-header">
             <div className="visor-header-left">
               <span className="visor-pulse"></span>
-              <strong>Visualizar Diretrizes em Execução</strong>
+              <strong>Visualizar e Editar Diretrizes</strong>
             </div>
             <button className="expand-btn">
-              Acessar
+              Editar Manualmente
             </button>
           </div>
         </div>
@@ -219,13 +244,24 @@ SAÍDA OBRIGATÓRIA (JSON):
           <div className="prompt-modal-overlay" onClick={() => setIsPromptVisible(false)}>
             <div className="prompt-modal-content" onClick={e => e.stopPropagation()}>
               <div className="prompt-modal-header">
-                <h3>System Prompt Base</h3>
+                <h3>Editar Diretrizes do Robô</h3>
                 <button className="prompt-modal-close" onClick={() => setIsPromptVisible(false)}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
               </div>
               <div className="prompt-modal-body">
-                {currentPrompt}
+                <textarea 
+                  className="manual-prompt-editor"
+                  value={tempPrompt}
+                  onChange={e => setTempPrompt(e.target.value)}
+                  placeholder="Digite aqui as diretrizes manuais para o seu robô..."
+                />
+              </div>
+              <div className="prompt-modal-footer">
+                <button className="cancel-manual-btn" onClick={() => setIsPromptVisible(false)}>Cancelar</button>
+                <button className="save-manual-btn" onClick={handleManualSave} disabled={isSavingManual}>
+                  {isSavingManual ? <div className="spinner-mini"></div> : "Salvar Alterações"}
+                </button>
               </div>
             </div>
           </div>

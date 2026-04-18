@@ -176,19 +176,37 @@ serve(async (req) => {
           .order('created_at', { ascending: false })
           .limit(10);
 
-        const messages = (history || [])
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-          .map(h => ({
-            role: h.is_from_me ? "assistant" : "user",
-            content: h.content
-          }));
+        const rawHistory = (history || [])
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-        // Se o último do histórico já for o texto atual, não duplica
-        if (messages.length > 0 && messages[messages.length - 1].content === finalContent && messages[messages.length - 1].role === "user") {
-           // Já está lá
-        } else {
-           messages.push({ role: "user", content: finalContent });
-         }
+        const formattedMessages: { role: "user" | "assistant", content: string }[] = [];
+        
+        // Normaliza o histórico: Garante alternância e remove duplicatas
+        for (const h of rawHistory) {
+          const role = h.is_from_me ? "assistant" : "user";
+          if (formattedMessages.length > 0 && formattedMessages[formattedMessages.length - 1].role === role) {
+            // Se o papel for o mesmo, anexa o conteúdo (evita erro da Claude/OpenAI)
+            formattedMessages[formattedMessages.length - 1].content += "\n" + h.content;
+          } else {
+            formattedMessages.push({ role, content: h.content });
+          }
+        }
+
+        // Adiciona a mensagem atual (se ainda não estiver no topo)
+        if (formattedMessages.length === 0 || formattedMessages[formattedMessages.length - 1].content !== finalContent) {
+          if (formattedMessages.length > 0 && formattedMessages[formattedMessages.length - 1].role === "user") {
+            formattedMessages[formattedMessages.length - 1].content += "\n" + finalContent;
+          } else {
+            formattedMessages.push({ role: "user", content: finalContent });
+          }
+        }
+
+        // REGRA DE OURO: Claude exige começar com 'user'
+        while (formattedMessages.length > 0 && formattedMessages[0].role !== "user") {
+          formattedMessages.shift();
+        }
+
+        const messages = formattedMessages;
 
         console.log(`🧠 [Claude] Chamando modelo Haiku 4.5...`)
         

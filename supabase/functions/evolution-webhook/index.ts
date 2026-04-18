@@ -151,34 +151,37 @@ serve(async (req) => {
       if (!isFromMe && finalContent.trim()) {
         console.log("🦾 [IA] Iniciando processamento...")
 
-        // Busca treinamento no banco
+        // Busca treinamento no banco (Garante pegar a regra mais recente)
         const { data: trainingData } = await supabase
           .from('ai_training')
           .select('system_prompt, is_active')
           .eq('channel', 'whatsapp')
+          .order('id', { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        // Se a IA foi desligada no aplicativo, o servidor deve respeitar a trava
-        if (trainingData && trainingData.is_active === false) {
-          console.log("⏸️ [IA Desativada Globalmente] O botão de IA automática está OFF. Ignorando mensagem.");
+        // Se a IA foi desligada explicitamente, respeita
+        if (trainingData?.is_active === false) {
+          console.log("⏸️ [IA] Desativada.");
           return new Response("OK", { status: 200 });
         }
 
         const FinalSystemPrompt = trainingData?.system_prompt || "Você é o AllcanceAI, um assistente virtual inteligente. Responda de forma curta e amigável em português.";
 
-        // Busca Contexto (6 últimas)
+        // Busca Contexto (10 últimas para mais inteligência)
         const { data: history } = await supabase
           .from('wa_messages')
-          .select('content, is_from_me')
+          .select('content, is_from_me, created_at')
           .eq('remote_jid', remoteJid)
           .order('created_at', { ascending: false })
-          .limit(6);
+          .limit(10);
 
-        const messages = (history || []).reverse().map(h => ({
-          role: h.is_from_me ? "assistant" : "user",
-          content: h.content
-        }));
+        const messages = (history || [])
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+          .map(h => ({
+            role: h.is_from_me ? "assistant" : "user",
+            content: h.content
+          }));
 
         // Se o último do histórico já for o texto atual, não duplica
         if (messages.length > 0 && messages[messages.length - 1].content === finalContent && messages[messages.length - 1].role === "user") {

@@ -234,11 +234,14 @@ serve(async (req) => {
             const sendRes = await fetch(`${fullEvoUrl}/message/sendText/${instanceName}`, {
               method: 'POST',
               headers: { 'apikey': evoKey!, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ number: remoteJid.split('@')[0], text: chunk.trim() })
+              body: JSON.stringify({ number: remoteJid, text: chunk.trim() })
             });
 
+            const sendStatus = sendRes.status;
+            const sendData = await sendRes.json();
+            console.log(`📡 [Evolution Response] Status: ${sendStatus}`, sendData);
+
             if (sendRes.ok) {
-              const sendData = await sendRes.json();
               await supabase.from('wa_messages').insert({
                 instance_name: instanceName,
                 remote_jid: remoteJid,
@@ -248,6 +251,8 @@ serve(async (req) => {
                 content: chunk.trim(),
                 message_type: "text"
               });
+            } else {
+              console.error(`🚨 [Evolution Falhou] Erro ao enviar para ${remoteJid}:`, sendData);
             }
 
             if (chunks.length > 1) await new Promise(r => setTimeout(r, 3000));

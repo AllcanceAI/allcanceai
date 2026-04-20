@@ -253,10 +253,11 @@ serve(async (req) => {
 <REGRAS_DE_QUALIDADE_E_ELEGANCIA>
 - Máximo de 2 blocos curtos por resposta.
 - Apenas 1 pergunta principal por vez (foco total).
-- CONTRADIÇÃO: Se o cliente mudar de ideia (ex: mudar tamanho ou qtd), priorize a MENSAGEM dele e atualize a memória. NUNCA tente convencê-lo do dado antigo.
+- PRIORIDADE DE CONTEXTO: O Histórico de Mensagens é a fonte de verdade absoluta. Se o dado está no papo recente, NÃO PERGUNTE de novo, apenas processe e atualize a memória silenciosamente.
+- CONTRADIÇÃO: Se o cliente mudar de ideia, priorize a MENSAGEM dele e atualize a memória imediatamente.
 - SAUDAÇÃO: Se o histórico já tem mensagens, NUNCA use "Olá", "Tudo bem" ou saudações iniciais. Vá direto ao ponto.
 - Se o cliente já confirmou (etapa: fechamento), não volte para descobertas, mas responda dúvidas técnicas sem perder o foco do pedido.
-- Se a memória diz que o catálogo ou formulário já foi enviado, não envie novamente a menos que explicitamente solicitado ("manda de novo").
+- Se a memória diz que o catálogo ou formulário já foi enviado, não envie novamente a menos que solicitado ("manda de novo").
 </REGRAS_DE_QUALIDADE_E_ELEGANCIA>
 
 <SYSTEM_FIXO>
@@ -276,12 +277,13 @@ ${trainingData?.system_prompt || "Você é o atendente da Fabricante Primme..."}
 </CONTEXTO_DINAMICO_DO_CONTATO>
 
 REGRA DE ATUALIZAÇÃO (OBRIGATÓRIO):
-Ao final da resposta, use a tag <update_memory> com um JSON. 
-REGRAS DE CONFIANÇA:
-- Só atualize um campo se tiver ABSOLUTA CERTEZA. 
-- Se o dado for ambíguo, omita o campo do JSON para preservar o valor anterior.
-- Se a etapa mudou (ex: de 'negociacao' para 'fechamento'), atualize o campo 'etapa'.
-Campos e Atalhos: {name, idioma, pais, etapa, produto, tamanho, quantidade, frete, total, objecoes, resumo, catalogo_enviado, formulario_enviado, formulario_preenchido}
+Ao final da resposta, use a tag <update_memory> com um JSON contendo as mudanças. 
+REGRAS DE PRUDÊNCIA:
+- Se a informação foi dita pelo cliente (ex: "quero Tam M"), atualize o campo correspondente.
+- Se o dado for ambíguo, omita o campo do JSON.
+- Se a etapa mudou, atualize 'etapa'.
+- Sempre mantenha o campo 'resumo' com os últimos fatos.
+Campos: {name, idioma, pais, etapa, produto, tamanho, quantidade, frete, total, objecoes, resumo, catalogo_enviado, formulario_enviado, formulario_preenchido}
         `.trim();
 
         // Busca Contexto focado (40 mensagens são ideais para manter foco e evitar ruído)

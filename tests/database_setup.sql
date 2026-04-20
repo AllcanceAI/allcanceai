@@ -57,9 +57,22 @@ CREATE TABLE public.ai_training (
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
     channel TEXT NOT NULL CHECK (channel IN ('whatsapp', 'telegram')),
     system_prompt TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT true,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(user_id, channel)
 );
+
+CREATE TABLE IF NOT EXISTS public.ai_disabled_chats (
+    id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    chat_id TEXT NOT NULL,
+    channel TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, chat_id, channel)
+);
+
+ALTER TABLE public.ai_disabled_chats ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Usuário controla chats desativados" ON public.ai_disabled_chats FOR ALL USING (auth.uid() = user_id);
 
 ALTER TABLE public.ai_training ENABLE ROW LEVEL SECURITY;
 

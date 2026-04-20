@@ -114,11 +114,45 @@ export const CRMProvider = ({ children }) => {
        await supabase.from('ai_training').update({ is_active: newState }).eq('user_id', session.user.id);
     }
   };
-  const toggleChatAi = (contactId) => {
+  const toggleChatAi = async (contactId) => {
+    const isCurrentlyDisabled = disabledAiChatIds.includes(contactId);
     setDisabledAiChatIds(prev => 
-      prev.includes(contactId) ? prev.filter(id => id !== contactId) : [...prev, contactId]
+      isCurrentlyDisabled ? prev.filter(id => id !== contactId) : [...prev, contactId]
     );
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+       if (isCurrentlyDisabled) {
+         await supabase.from('ai_disabled_chats')
+           .delete()
+           .eq('user_id', session.user.id)
+           .eq('chat_id', contactId)
+           .eq('channel', 'whatsapp');
+       } else {
+         await supabase.from('ai_disabled_chats')
+           .insert({ user_id: session.user.id, chat_id: contactId, channel: 'whatsapp' });
+       }
+    }
   };
+   
+  // Carregar dados iniciais do banco
+  useEffect(() => {
+    const syncWithDb = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        const { data: disabled } = await supabase
+          .from('ai_disabled_chats')
+          .select('chat_id')
+          .eq('user_id', session.user.id)
+          .eq('channel', 'whatsapp');
+        
+        if (disabled) {
+          setDisabledAiChatIds(disabled.map(d => d.chat_id));
+        }
+      }
+    };
+    syncWithDb();
+  }, []);
 
   return (
     <CRMContext.Provider value={{

@@ -176,8 +176,21 @@ serve(async (req) => {
 
         // Se a IA foi desligada explicitamente, respeita
         if (trainingData?.is_active === false) {
-          console.log("⏸️ [IA] Desativada.");
+          console.log("⏸️ [IA] Desativada Globalmente.");
           return new Response("OK", { status: 200 });
+        }
+
+        // Verifica se este chat específico está desativado
+        const { data: isDisabled } = await supabase
+          .from('ai_disabled_chats')
+          .select('id')
+          .eq('chat_id', remoteJid)
+          .eq('channel', 'whatsapp')
+          .maybeSingle();
+        
+        if (isDisabled) {
+           console.log(`⏸️ [IA] Desativada para o chat: ${remoteJid}`);
+           return new Response("OK", { status: 200 });
         }
 
         const FinalSystemPrompt = trainingData?.system_prompt || "Você é o AllcanceAI, um assistente virtual inteligente. Responda de forma curta e amigável em português.";

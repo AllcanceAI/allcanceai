@@ -102,9 +102,11 @@ export function useWhatsApp(userId, activeTab) {
       supabase.removeChannel(waChannelRef.current);
     }
 
+    if (!selectedWaChat?.id) return;
+
     const cleanId = selectedWaChat.id.replace(/[^a-zA-Z0-9]/g, '');
     const channel = supabase
-      .channel(`chat_unique_${cleanId}`)
+      .channel(`chat_active_${cleanId}_${Date.now()}`) // Nome único para evitar conflito
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'wa_messages' },
@@ -127,10 +129,17 @@ export function useWhatsApp(userId, activeTab) {
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`📡 [Realtime Chat] Status: ${status} para ${selectedWaChat.id}`);
+      });
 
     waChannelRef.current = channel;
-    return () => { if (waChannelRef.current) { supabase.removeChannel(waChannelRef.current); waChannelRef.current = null; } };
+    return () => {
+      if (waChannelRef.current) {
+        supabase.removeChannel(waChannelRef.current);
+        waChannelRef.current = null;
+      }
+    };
   }, [selectedWaChat?.id, waStatus, waInstanceName]);
 
   // Global Radar for Sidebar updates
@@ -170,7 +179,9 @@ export function useWhatsApp(userId, activeTab) {
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`📡 [Realtime Global Radar] Status: ${status}`);
+      });
 
     return () => { supabase.removeChannel(globalChannel); };
   }, [waStatus, waInstanceName]);

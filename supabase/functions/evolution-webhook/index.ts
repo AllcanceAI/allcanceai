@@ -68,14 +68,9 @@ serve(async (req) => {
         }
       }
 
-      let remoteJid = msg.key?.remoteJid;
+      const pushName = msg.pushName || "Contato";
+      const remoteJid = msg.key?.remoteJid;
       const isFromMe = msg.key?.fromMe || false;
-
-      // Se for sincronia do celular (@lid), tenta descobrir quem é o destinatário real lá dentro (protegido contra null)
-      if (isFromMe && remoteJid?.includes('@lid')) {
-         const innerMsg = msg.message?.deviceSentMessage?.message;
-         if (innerMsg?.key?.remoteJid) remoteJid = innerMsg.key.remoteJid;
-      }
 
       // Extrai a mensagem real (desempacota deviceSentMessage)
       const realMsg = msg.message?.deviceSentMessage?.message 
@@ -162,16 +157,20 @@ serve(async (req) => {
         console.warn("⚠️ Áudio recebido mas GROQ_API_KEY não foi encontrada nos Secrets da Supabase!");
       }
 
-      // Salva no banco wa_messages DEPOIS da transcrição (Para o front-end pegar via Realtime perfeitamente)
-      await supabase.from('wa_messages').insert({
-        instance_name: instanceName,
-        remote_jid: remoteJid,
-        message_id: msg.key?.id,
-        push_name: msg.pushName || "Contato",
-        is_from_me: isFromMe,
-        content: finalContent,
-        message_type: "text"
-      });
+      // Salva no banco wa_messages (Para o front-end pegar via Realtime)
+      try {
+        await supabase.from('wa_messages').insert({
+          instance_name: instanceName,
+          remote_jid: remoteJid,
+          message_id: msg.key?.id,
+          push_name: pushName,
+          is_from_me: isFromMe,
+          content: finalContent,
+          message_type: "text"
+        });
+      } catch (dbErr) {
+        console.error("❌ Erro ao salvar em wa_messages (Realtime):", dbErr.message);
+      }
 
       // --- DISPARO DA IA ---
       if (!isFromMe && finalContent.trim()) {

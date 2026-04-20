@@ -61,7 +61,7 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
     }
 
     const messages = [];
-    filteredHistory.slice(-10).forEach(m => {
+    filteredHistory.slice(-500).forEach(m => {
       const role = m.out ? "assistant" : "user";
       if (messages.length === 0 || messages[messages.length - 1].role !== role) {
         messages.push({ role, content: m.message });
@@ -141,7 +141,7 @@ async function fallbackToGroq(prompt, history, systemPrompt) {
         model: import.meta.env.VITE_GROQ_MODEL || "llama-3.3-70b-versatile",
         messages: [
           { role: "system", content: systemPrompt },
-          ...history.slice(-10).map(m => ({ 
+          ...history.slice(-500).map(m => ({ 
              role: m.role || (m.out ? "assistant" : "user"), 
              content: m.content || m.message 
           })),

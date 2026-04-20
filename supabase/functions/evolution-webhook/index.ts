@@ -174,7 +174,7 @@ serve(async (req) => {
           .select('content, is_from_me, created_at')
           .eq('remote_jid', remoteJid)
           .order('created_at', { ascending: false })
-          .limit(10);
+          .limit(500); // Aumentado de 10 para 500 para histórico completo
 
         const rawHistory = (history || [])
           .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());

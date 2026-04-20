@@ -44,15 +44,19 @@ serve(async (req) => {
 
       const messageId = msg.key?.id;
       if (messageId) {
-        const { data: existing } = await supabase
-          .from('wa_messages')
-          .select('id')
-          .eq('message_id', messageId)
-          .maybeSingle();
-        
-        if (existing) {
-          console.log(`🚫 [Deduplicação] Mensagem ${messageId} já processada. Ignorando.`);
-          return new Response("OK", { status: 200 });
+        try {
+          const { data: existing } = await supabase
+            .from('wa_messages')
+            .select('id')
+            .eq('message_id', messageId)
+            .maybeSingle();
+          
+          if (existing) {
+            console.log(`🚫 [Deduplicação] Mensagem ${messageId} já processada. Ignorando.`);
+            return new Response("OK", { status: 200 });
+          }
+        } catch (dbErr) {
+          console.warn("⚠️ Falha ao verificar deduplicação (tabela wa_messages pode estar mudando):", dbErr.message);
         }
       }
 
@@ -180,17 +184,21 @@ serve(async (req) => {
           return new Response("OK", { status: 200 });
         }
 
-        // Verifica se este chat específico está desativado
-        const { data: isDisabled } = await supabase
-          .from('ai_disabled_chats')
-          .select('id')
-          .eq('chat_id', remoteJid)
-          .eq('channel', 'whatsapp')
-          .maybeSingle();
-        
-        if (isDisabled) {
-           console.log(`⏸️ [IA] Desativada para o chat: ${remoteJid}`);
-           return new Response("OK", { status: 200 });
+        // Verifica se este chat específico está desativado (com Try/Catch para evitar crash se tabela não existir)
+        try {
+          const { data: isDisabled } = await supabase
+            .from('ai_disabled_chats')
+            .select('id')
+            .eq('chat_id', remoteJid)
+            .eq('channel', 'whatsapp')
+            .maybeSingle();
+          
+          if (isDisabled) {
+             console.log(`⏸️ [IA] Desativada para o chat: ${remoteJid}`);
+             return new Response("OK", { status: 200 });
+          }
+        } catch (e) {
+          console.warn("⚠️ Tabela ai_disabled_chats não encontrada ou erro na busca. Continuando...");
         }
 
         const FinalSystemPrompt = trainingData?.system_prompt || "Você é o AllcanceAI, um assistente virtual inteligente. Responda de forma curta e amigável em português.";
@@ -249,7 +257,7 @@ serve(async (req) => {
                 "anthropic-version": "2023-06-01"
               },
               body: JSON.stringify({
-                model: "claude-sonnet-4-5",
+                model: "claude-3-5-sonnet-latest",
                 system: FinalSystemPrompt,
                 messages: messages,
                 max_tokens: 1024

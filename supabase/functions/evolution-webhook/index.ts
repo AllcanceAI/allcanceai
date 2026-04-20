@@ -208,43 +208,64 @@ serve(async (req) => {
 
         const messages = formattedMessages;
 
-        console.log(`🧠 [Claude] Chamando modelo Haiku 4.5...`)
-        
         let aiResult = "";
-        try {
-          const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-api-key": anthropicKey!,
-              "anthropic-version": "2023-06-01"
-            },
-            body: JSON.stringify({
-              model: "claude-3-5-sonnet-20241022", // Usando Sonnet temporariamente para garantir
-              system: FinalSystemPrompt,
-              messages: messages,
-              max_tokens: 1024
-            })
-          });
-          const cData = await claudeRes.json();
-          aiResult = cData.content?.[0]?.text || "";
-        } catch (e) {
-          console.error("❌ Erro Claude:", e.message)
+
+        if (messages.length > 0) {
+          console.log(`🧠 [Claude] Chamando modelo claude-haiku-4-5-20251001...`)
+          
+          try {
+            const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-api-key": anthropicKey!,
+                "anthropic-version": "2023-06-01"
+              },
+              body: JSON.stringify({
+                model: "claude-haiku-4-5-20251001",
+                system: FinalSystemPrompt,
+                messages: messages,
+                max_tokens: 1024
+              })
+            });
+
+            if (!claudeRes.ok) {
+              const errBody = await claudeRes.text();
+              console.error(`❌ Erro Claude API (${claudeRes.status}):`, errBody);
+            } else {
+              const cData = await claudeRes.json();
+              aiResult = cData.content?.[0]?.text || "";
+            }
+          } catch (e) {
+            console.error("🚨 Erro de Rede Claude:", e.message);
+          }
+        } else {
+          console.warn("⚠️ [IA] Histórico de mensagens vazio. Pulando Claude.");
         }
 
-        // FALLBACK GROQ
-        if (!aiResult && groqKey) {
+        // FALLBACK GROQ (Se Claude falhou ou não retornou texto)
+        if (!aiResult && groqKey && messages.length > 0) {
            console.log("🔄 [Fallback] Usando Groq Llama 3...")
-           const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-             method: "POST",
-             headers: { "Authorization": `Bearer ${groqKey}`, "Content-Type": "application/json" },
-             body: JSON.stringify({
-               model: "llama-3.3-70b-versatile",
-               messages: [{ role: "system", content: FinalSystemPrompt }, ...messages]
-             })
-           });
-           const gData = await groqRes.json();
-           aiResult = gData.choices?.[0]?.message?.content || "";
+           try {
+             const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+               method: "POST",
+               headers: { "Authorization": `Bearer ${groqKey}`, "Content-Type": "application/json" },
+               body: JSON.stringify({
+                 model: "llama-3.3-70b-versatile",
+                 messages: [{ role: "system", content: FinalSystemPrompt }, ...messages]
+               })
+             });
+
+             if (!groqRes.ok) {
+               const errBody = await groqRes.text();
+               console.error(`❌ Erro Groq API (${groqRes.status}):`, errBody);
+             } else {
+               const gData = await groqRes.json();
+               aiResult = gData.choices?.[0]?.message?.content || "";
+             }
+           } catch (e) {
+             console.error("🚨 Erro de Rede Groq:", e.message);
+           }
         }
 
         if (aiResult) {

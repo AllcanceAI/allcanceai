@@ -9,33 +9,42 @@ const corsHeaders = {
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
-  try {
-    const payload = await req.json()
-    const event = payload.event
-    const instanceName = payload.instance || payload.instanceName || "desconhecida"
-    
-    console.log(`📥 [Webhook] Evento: ${event} na instância: ${instanceName}`)
+    try {
+      const payload = await req.json()
+      const event = payload.event
+      const instanceName = payload.instance || payload.instanceName || "desconhecida"
+      
+      console.log(`📥 [Webhook] Evento: ${event} na instância: ${instanceName}`)
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
-    const groqKey = Deno.env.get('GROQ_API_KEY')
-    const evoUrl = Deno.env.get('EVOLUTION_URL')
-    const evoKey = Deno.env.get('EVOLUTION_GLOBAL_KEY')
-    const fullEvoUrl = evoUrl?.includes('http') ? evoUrl : `http://2.24.203.75:8080`;
-    const DEBUG_AI = true;
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
+      const groqKey = Deno.env.get('GROQ_API_KEY')
+      const evoUrl = Deno.env.get('EVOLUTION_URL')
+      const evoKey = Deno.env.get('EVOLUTION_GLOBAL_KEY')
+      const fullEvoUrl = evoUrl?.includes('http') ? evoUrl : `http://2.24.203.75:8080`;
+      const DEBUG_AI = true;
 
-    const maskSensitive = (text: string) => {
-      if (!text) return "";
-      return text
-        .replace(/\b\d{10,13}\b/g, (m) => m.slice(0, 4) + "****" + m.slice(-4))
-        .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, "email@mascarado.com");
-    };
-    
-    const supabase = createClient(supabaseUrl, supabaseKey)
+      const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // 1. Salva LOG Bruto
-    await supabase.from('evolution_webhook_logs').insert({ event_type: event, payload: payload })
+      // LOG GLOBAL DE ERRO SE ALGO FALHAR NO PROCESSAMENTO
+      const logErrorToDB = async (err: any, context: string) => {
+         console.error(`🚨 [${context}]:`, err.message);
+         await supabase.from('evolution_webhook_logs').insert({ 
+            event_type: 'error', 
+            payload: { context, error: err.message, stack: err.stack } 
+         });
+      };
+
+      const maskSensitive = (text: string) => {
+        if (!text) return "";
+        return text
+          .replace(/\b\d{10,13}\b/g, (m) => m.slice(0, 4) + "****" + m.slice(-4))
+          .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, "email@mascarado.com");
+      };
+      
+      // 1. Salva LOG Bruto
+      await supabase.from('evolution_webhook_logs').insert({ event_type: event, payload: payload })
 
     // 2. Processa Mensagens
     if (event === 'messages.upsert' || event === 'MESSAGES_UPSERT') {
@@ -355,7 +364,7 @@ Campos: {name, idioma, pais, etapa, produto, tamanho, quantidade, frete, total, 
                 "anthropic-version": "2023-06-01"
               },
               body: JSON.stringify({
-                model: "claude-3-5-sonnet-20241022",
+                model: "claude-sonnet-4-5",
                 system: FinalSystemPrompt,
                 messages: messages,
                 max_tokens: 1024,
@@ -371,7 +380,7 @@ Campos: {name, idioma, pais, etapa, produto, tamanho, quantidade, frete, total, 
               aiResult = cData.content[0].text;
 
             // --- 4. VALIDAÇÃO DE QUALIDADE (GUARD) ---
-            if (!aiResult || aiResult.length < 2) return new Response("OK", { status: 200 });
+            if (!aiResult) return new Response("OK", { status: 200 });
 
             // Truncamento Inteligente (Melhoria de Elegância)
             const truncateSmart = (text: string, limit: number = 1000) => {
@@ -413,6 +422,15 @@ Campos: {name, idioma, pais, etapa, produto, tamanho, quantidade, frete, total, 
                 
                 // --- HARDENING: Proteção de Sobrescrita e Regressão ---
                 const dbUpdates: any = { last_interaction_at: new Date().toISOString() };
+                
+                // --- SAFE UPDATE: Protege contra sobrescrita com dados vazios ---
+                const safeUpdate = (field: string, value: any) => {
+                   if (value === null || value === undefined) return;
+                   if (value === '' && field !== 'objecoes') return;
+                   if (Array.isArray(value) && value.length === 0) return;
+                   if (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length === 0) return;
+                   dbUpdates[field] = value;
+                };
                 
                 // --- VALIDAÇÃO E COERÇÃO DE TIPOS ---
                 const toNum = (val: any) => {
@@ -505,9 +523,16 @@ Campos: {name, idioma, pais, etapa, produto, tamanho, quantidade, frete, total, 
            }
         }
 
+        await supabase.from('evolution_webhook_logs').insert({ event_type: 'ia_trace', payload: { step: 'ai_result_generated', success: !!aiResult, length: aiResult?.length || 0 } });
+
         if (aiResult) {
            // --- LIMPEZA DE TAGS ANTES DO ENVIO ---
            aiResult = aiResult.replace(/<update_memory>[\s\S]*?<\/update_memory>/g, "").trim();
+           
+           // Fallback se a limpeza removeu tudo
+           if (!aiResult) {
+              aiResult = "Entendido! Como posso te ajudar agora?";
+           }
            
            const chunks = aiResult.split('\n\n').filter((c: string) => c.trim().length > 0);
           

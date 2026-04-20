@@ -223,6 +223,7 @@ serve(async (req) => {
         console.log("🔥 [IA] Passou nas travas. Chamando Claude...");
 
         // --- 1. CARREGA MEMÓRIA DO CONTATO ---
+        await supabase.from('evolution_webhook_logs').insert({ event_type: 'ia_trace', payload: { step: 'loading_memory', phone: remoteJid } });
         let contactMemory = {};
         try {
           const { data: memory } = await supabase
@@ -234,12 +235,12 @@ serve(async (req) => {
           if (memory) {
             contactMemory = memory;
           } else {
-            // Cria entrada inicial se não existir
             await supabase.from('ai_contact_memory').insert({ phone: remoteJid, name: pushName });
           }
         } catch (e) {
           console.warn("⚠️ Erro ao acessar ai_contact_memory:", e.message);
         }
+        await supabase.from('evolution_webhook_logs').insert({ event_type: 'ia_trace', payload: { step: 'building_prompt', phone: remoteJid } });
 
         // --- MONTAGEM DO PROMPT EM 3 CAMADAS ---
         const FinalSystemPrompt = `
@@ -505,7 +506,10 @@ Campos: {name, idioma, pais, etapa, produto, tamanho, quantidade, frete, total, 
         }
 
         if (aiResult) {
-          const chunks = aiResult.split('\n\n').filter((c: string) => c.trim().length > 0);
+           // --- LIMPEZA DE TAGS ANTES DO ENVIO ---
+           aiResult = aiResult.replace(/<update_memory>[\s\S]*?<\/update_memory>/g, "").trim();
+           
+           const chunks = aiResult.split('\n\n').filter((c: string) => c.trim().length > 0);
           
           for (const chunk of chunks) {
             console.log(`📤 [Evolution] Enviando bolha...`)

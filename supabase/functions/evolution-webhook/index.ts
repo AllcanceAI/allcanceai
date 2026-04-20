@@ -233,20 +233,23 @@ serve(async (req) => {
         for (const h of rawHistory) {
           const role = h.is_from_me ? "assistant" : "user";
           if (formattedMessages.length > 0 && formattedMessages[formattedMessages.length - 1].role === role) {
-            // Usa o separador sugerido para não perder o contexto de bolhas separadas
-            formattedMessages[formattedMessages.length - 1].content += "\n---\n" + h.content;
+            // Bolhas seguidas do mesmo autor separadas por quebra de linha simples
+            formattedMessages[formattedMessages.length - 1].content += "\n" + h.content;
           } else {
             formattedMessages.push({ role, content: h.content });
           }
         }
 
-        // Adiciona a mensagem atual APENAS se ela não estiver na lista (Deduplicação Final)
+        // Adiciona a mensagem atual se ela não estiver na lista (Segurança de Tempo Real)
         if (!seenIds.has(messageId)) {
+          console.log(`📌 [IA Context] Adicionando mensagem atual manualmente: ${messageId}`);
           if (formattedMessages.length > 0 && formattedMessages[formattedMessages.length - 1].role === "user") {
-            formattedMessages[formattedMessages.length - 1].content += "\n---\n" + finalContent; // Usando separador
+            formattedMessages[formattedMessages.length - 1].content += "\n" + finalContent;
           } else {
             formattedMessages.push({ role: "user", content: finalContent });
           }
+        } else {
+          console.log(`📌 [IA Context] Mensagem atual já estava no histórico do banco.`);
         }
 
         // REGRA DE OURO: Claude exige começar com 'user'

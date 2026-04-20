@@ -53,28 +53,46 @@ export function useTelegram(userId, globalAiEnabled, disabledAiChatIds) {
     }
   }, [telegramStatus])
 
-  // Auto-Pilot Monitor
+  // Message Monitor (UI + Sidebar Sync)
   useEffect(() => {
-    if (telegramStatus === 'connected' && globalAiEnabled) {
-      listenToNewMessages(async (msg) => {
-        const contactId = msg.peerId?.userId?.toString() || msg.peerId?.chatId?.toString();
-        if (disabledAiChatIds.includes(contactId)) return;
-        const text = msg.message;
-        if (!text) return;
-        
+    if (telegramStatus !== 'connected') return;
+
+    listenToNewMessages(async (msg) => {
+      const contactId = msg.peerId?.userId?.toString() || msg.peerId?.chatId?.toString();
+      
+      // Update Sidebar
+      setTgDialogs(prev => {
+        const newDialogs = [...prev];
+        const index = newDialogs.findIndex(d => d.id?.toString() === contactId);
+        if (index >= 0) {
+          const updated = { ...newDialogs[index], lastMessage: msg, unreadCount: (newDialogs[index].unreadCount || 0) + 1 };
+          newDialogs.splice(index, 1);
+          return [updated, ...newDialogs];
+        }
+        return newDialogs;
+      });
+
+      // Update Current Chat if active
+      if (selectedTgChat && selectedTgChat.id?.toString() === contactId) {
+        setTgMessages(prev => [...prev, msg]);
+        markChatAsRead(selectedTgChat.entity);
+      }
+
+      // Auto-Pilot Logic
+      if (globalAiEnabled && !disabledAiChatIds.includes(contactId)) {
         try {
           const history = await getChatMessages(msg.peerId, 5);
-          const aiReply = await generateAiResponse(text, history, userId, 'telegram');
+          const aiReply = await generateAiResponse(msg.message, history, userId, 'telegram');
           if (aiReply) {
             await sendTelegramMessage(msg.peerId, aiReply);
-            if (selectedTgChat && (selectedTgChat.id?.toString() === contactId)) {
+            if (selectedTgChat && selectedTgChat.id?.toString() === contactId) {
               const updatedMsgs = await getChatMessages(msg.peerId, 50);
               setTgMessages(updatedMsgs);
             }
           }
         } catch (error) { console.error("🤖 Erro no Auto-Pilot:", error); }
-      });
-    }
+      }
+    });
   }, [telegramStatus, globalAiEnabled, disabledAiChatIds, selectedTgChat, userId]);
 
   const handleSendMessage = async () => {

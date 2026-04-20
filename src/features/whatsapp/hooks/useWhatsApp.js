@@ -96,23 +96,25 @@ export function useWhatsApp(userId, activeTab) {
 
   // Realtime Listener for Current Chat
   useEffect(() => {
-    if (!selectedWaChat || waStatus !== 'connected') return;
+    if (!selectedWaChat || waStatus !== 'connected' || !waInstanceName) return;
 
-    if (waChannelRef.current) supabase.removeChannel(waChannelRef.current);
+    if (waChannelRef.current) {
+      supabase.removeChannel(waChannelRef.current);
+    }
 
     const cleanId = selectedWaChat.id.replace(/[^a-zA-Z0-9]/g, '');
     const channel = supabase
       .channel(`chat_unique_${cleanId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'wa_messages' },
+        { event: 'INSERT', schema: 'public', table: 'wa_messages', filter: `instance_name=eq.${waInstanceName}` },
         async (payload) => {
           if (payload.new.remote_jid !== selectedWaChat.id) return;
-          if (payload.new.instance_name !== waInstanceName) return;
 
           const newMsgId = payload.new.message_id;
           setWaMessages(prev => {
             if (newMsgId && prev.some(m => m.id === newMsgId)) return prev;
+            
             return [...prev, {
               id: newMsgId,
               message: payload.new.content,
@@ -129,6 +131,48 @@ export function useWhatsApp(userId, activeTab) {
     waChannelRef.current = channel;
     return () => { if (waChannelRef.current) { supabase.removeChannel(waChannelRef.current); waChannelRef.current = null; } };
   }, [selectedWaChat?.id, waStatus, waInstanceName]);
+
+  // Global Radar for Sidebar updates
+  useEffect(() => {
+    if (waStatus !== 'connected' || !waInstanceName) return;
+
+    const globalChannel = supabase
+      .channel('wa-global-sidebar')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'wa_messages',
+          filter: `instance_name=eq.${waInstanceName}`
+        },
+        async (payload) => {
+          const contactId = payload.new.remote_jid;
+          if (!contactId || contactId.includes('@lid')) return;
+
+          setWaDialogs(prev => {
+            const newDialogs = [...prev];
+            const index = newDialogs.findIndex(d => d.id === contactId);
+            
+            const updatedData = {
+              ...(index >= 0 ? newDialogs[index] : { 
+                id: contactId, 
+                name: payload.new.push_name || contactId.split('@')[0],
+                picture: null 
+              }),
+              message: payload.new.content,
+              time: Math.floor(new Date(payload.new.created_at).getTime() / 1000)
+            };
+
+            if (index >= 0) newDialogs.splice(index, 1);
+            return [updatedData, ...newDialogs];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(globalChannel); };
+  }, [waStatus, waInstanceName]);
 
   const handleSendMessage = async () => {
     if (!waInput.trim() || !selectedWaChat) return;

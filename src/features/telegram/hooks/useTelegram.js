@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { startQRLogin, getSavedSession, getDialogs, getChatMessages, sendTelegramMessage, getProfilePhotoUrl, markChatAsRead, listenToNewMessages } from '../../../services/telegramService'
+import { startQRLogin, getSavedSession, getDialogs, getChatMessages, sendTelegramMessage, getProfilePhotoUrl, markChatAsRead, listenToNewMessages, removeNewMessagesListener } from '../../../services/telegramService'
 import { generateAiResponse } from '../../../services/aiService'
 
 export function useTelegram(userId, globalAiEnabled, disabledAiChatIds) {
@@ -57,7 +57,7 @@ export function useTelegram(userId, globalAiEnabled, disabledAiChatIds) {
   useEffect(() => {
     if (telegramStatus !== 'connected') return;
 
-    listenToNewMessages(async (msg) => {
+    const handler = listenToNewMessages(async (msg) => {
       const contactId = msg.peerId?.userId?.toString() || msg.peerId?.chatId?.toString();
       
       // Update Sidebar
@@ -74,7 +74,10 @@ export function useTelegram(userId, globalAiEnabled, disabledAiChatIds) {
 
       // Update Current Chat if active
       if (selectedTgChat && selectedTgChat.id?.toString() === contactId) {
-        setTgMessages(prev => [...prev, msg]);
+        setTgMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
         markChatAsRead(selectedTgChat.entity);
       }
 
@@ -85,15 +88,17 @@ export function useTelegram(userId, globalAiEnabled, disabledAiChatIds) {
           const aiReply = await generateAiResponse(msg.message, history, userId, 'telegram');
           if (aiReply) {
             await sendTelegramMessage(msg.peerId, aiReply);
-            if (selectedTgChat && selectedTgChat.id?.toString() === contactId) {
-              const updatedMsgs = await getChatMessages(msg.peerId, 50);
-              setTgMessages(updatedMsgs);
-            }
+            const updatedMsgs = await getChatMessages(msg.peerId, 50);
+            setTgMessages(updatedMsgs);
           }
         } catch (error) { console.error("🤖 Erro no Auto-Pilot:", error); }
       }
     });
-  }, [telegramStatus, globalAiEnabled, disabledAiChatIds, selectedTgChat, userId]);
+
+    return () => {
+      if (handler) removeNewMessagesListener(handler);
+    };
+  }, [telegramStatus, globalAiEnabled, disabledAiChatIds, selectedTgChat?.id, userId]);
 
   const handleSendMessage = async () => {
     if (!tgInput.trim() || !selectedTgChat) return;

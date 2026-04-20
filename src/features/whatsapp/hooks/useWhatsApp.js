@@ -107,8 +107,9 @@ export function useWhatsApp(userId, activeTab) {
       .channel(`chat_unique_${cleanId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'wa_messages', filter: `instance_name=eq.${waInstanceName}` },
+        { event: 'INSERT', schema: 'public', table: 'wa_messages' },
         async (payload) => {
+          if (payload.new.instance_name !== waInstanceName) return;
           if (payload.new.remote_jid !== selectedWaChat.id) return;
 
           const newMsgId = payload.new.message_id;
@@ -143,10 +144,10 @@ export function useWhatsApp(userId, activeTab) {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'wa_messages',
-          filter: `instance_name=eq.${waInstanceName}`
+          table: 'wa_messages'
         },
         async (payload) => {
+          if (payload.new.instance_name !== waInstanceName) return;
           const contactId = payload.new.remote_jid;
           if (!contactId || contactId.includes('@lid')) return;
 

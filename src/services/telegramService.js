@@ -150,15 +150,23 @@ export const downloadMediaAsUrl = async (msg) => {
 
 export const listenToNewMessages = (callback) => {
   const telegramClient = getTelegramClient();
-  if (!telegramClient) return;
+  if (!telegramClient) return null;
 
-  telegramClient.addEventHandler(async (event) => {
+  const handler = async (event) => {
     const message = event.message;
-    // Evita loop (não responde às próprias mensagens disparadas pela IA/User)
     if (message && !message.out) {
       callback(message);
     }
-  }, new NewMessage({}));
+  };
+
+  telegramClient.addEventHandler(handler, new NewMessage({}));
+  return handler; // Return handler for later removal
+};
+
+export const removeNewMessagesListener = (handler) => {
+  const telegramClient = getTelegramClient();
+  if (!telegramClient || !handler) return;
+  telegramClient.removeEventHandler(handler, new NewMessage({}));
 };
 
 // Cache de fotos de perfil (em memória durante a sessão)

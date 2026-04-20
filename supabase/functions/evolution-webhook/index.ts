@@ -463,14 +463,29 @@ Campos: {name, idioma, pais, etapa, produto, tamanho, quantidade, frete, total, 
           // 5f. ENVIA RESPOSTA VIA EVOLUTION API
           // ============================================================
           const chunks = aiResult.split('\n\n').filter((c: string) => c.trim().length > 0)
+          
+          // Evolution API pode exigir número puro ou JID — tentamos com o JID primeiro
+          const sendNumber = remoteJid
 
           for (const chunk of chunks) {
             try {
-              const sendRes = await fetch(`${fullEvoUrl}/message/sendText/${instanceName}`, {
+              // Tenta enviar com o formato JID
+              let sendRes = await fetch(`${fullEvoUrl}/message/sendText/${instanceName}`, {
                 method: 'POST',
                 headers: { 'apikey': evoKey!, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ number: remoteJid, text: chunk.trim() })
+                body: JSON.stringify({ number: sendNumber, text: chunk.trim() })
               })
+
+              // Se 400, tenta com número puro (sem @s.whatsapp.net)
+              if (sendRes.status === 400 && sendNumber.includes('@')) {
+                const cleanNumber = sendNumber.replace(/@.*$/, '')
+                console.log(`🔄 Retry com número puro: ${cleanNumber}`)
+                sendRes = await fetch(`${fullEvoUrl}/message/sendText/${instanceName}`, {
+                  method: 'POST',
+                  headers: { 'apikey': evoKey!, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ number: cleanNumber, text: chunk.trim() })
+                })
+              }
 
               if (sendRes.ok) {
                 let sendData: any = {}

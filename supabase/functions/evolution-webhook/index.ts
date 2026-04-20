@@ -209,13 +209,21 @@ serve(async (req) => {
         // Busca Contexto (500 últimas para memória completa)
         const { data: historyData } = await supabase
           .from('wa_messages')
-          .select('content, is_from_me, created_at')
+          .select('content, is_from_me, created_at, message_id')
           .eq('remote_jid', remoteJid)
           .order('created_at', { ascending: false })
-          .order('id', { ascending: false })
           .limit(500);
 
-        const rawHistory = (historyData || []).reverse();
+        // Limpa duplicatas e coloca na ordem certa (antiga para nova)
+        const seenIds = new Set();
+        const rawHistory = (historyData || [])
+          .filter(m => {
+             if (!m.message_id) return true; // Permite se não tiver ID (mensagens antigas)
+             if (seenIds.has(m.message_id)) return false;
+             seenIds.add(m.message_id);
+             return true;
+          })
+          .reverse();
 
         console.log(`🤖 [IA Config] Global Active: ${trainingData?.is_active}`);
 
@@ -232,10 +240,10 @@ serve(async (req) => {
           }
         }
 
-        // Adiciona a mensagem atual (se ainda não estiver no topo)
-        if (formattedMessages.length === 0 || formattedMessages[formattedMessages.length - 1].content !== finalContent) {
+        // Adiciona a mensagem atual APENAS se ela não estiver na lista (Deduplicação Final)
+        if (!seenIds.has(messageId)) {
           if (formattedMessages.length > 0 && formattedMessages[formattedMessages.length - 1].role === "user") {
-            formattedMessages[formattedMessages.length - 1].content += "\n" + finalContent;
+            formattedMessages[formattedMessages.length - 1].content += "\n---\n" + finalContent; // Usando separador
           } else {
             formattedMessages.push({ role: "user", content: finalContent });
           }

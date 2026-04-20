@@ -69,7 +69,7 @@ export function TelegramView({
         archivedIds={archivedIds}
         RightSidebar={RightSidebar}
         CrmMenu={CrmMenu}
-        crmMenuState={crmMenu}
+        crmMenuState={crmMenuState}
         closeCrmMenu={closeCrmMenu}
       />
     )

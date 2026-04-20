@@ -66,7 +66,7 @@ export const generateAiResponse = async (prompt, history = [], userId = null, ch
       if (messages.length === 0 || messages[messages.length - 1].role !== role) {
         messages.push({ role, content: m.message });
       } else {
-        messages[messages.length - 1].content += "\n" + m.message;
+        messages[messages.length - 1].content += "\n---\n" + m.message;
       }
     });
 

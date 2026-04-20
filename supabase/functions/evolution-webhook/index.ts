@@ -202,21 +202,22 @@ serve(async (req) => {
         } catch (e) {
           console.warn("⚠️ Tabela ai_disabled_chats não encontrada ou erro na busca. Continuando...");
         }
-
         console.log("🔥 [IA] Passou nas travas. Chamando Claude...");
 
         const FinalSystemPrompt = trainingData?.system_prompt || "Você é o AllcanceAI, um assistente virtual inteligente. Responda de forma curta e amigável em português.";
 
-        // Busca Contexto (10 últimas para mais inteligência)
-        const { data: history } = await supabase
+        // Busca Contexto (500 últimas para memória completa)
+        const { data: historyData } = await supabase
           .from('wa_messages')
           .select('content, is_from_me, created_at')
           .eq('remote_jid', remoteJid)
           .order('created_at', { ascending: false })
-          .limit(500); // Aumentado de 10 para 500 para histórico completo
+          .order('id', { ascending: false })
+          .limit(500);
 
-        const rawHistory = (history || [])
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        const rawHistory = (historyData || []).reverse();
+
+        console.log(`🤖 [IA Config] Global Active: ${trainingData?.is_active}`);
 
         const formattedMessages: { role: "user" | "assistant", content: string }[] = [];
         
@@ -224,8 +225,8 @@ serve(async (req) => {
         for (const h of rawHistory) {
           const role = h.is_from_me ? "assistant" : "user";
           if (formattedMessages.length > 0 && formattedMessages[formattedMessages.length - 1].role === role) {
-            // Se o papel for o mesmo, anexa o conteúdo (evita erro da Claude/OpenAI)
-            formattedMessages[formattedMessages.length - 1].content += "\n" + h.content;
+            // Usa o separador sugerido para não perder o contexto de bolhas separadas
+            formattedMessages[formattedMessages.length - 1].content += "\n---\n" + h.content;
           } else {
             formattedMessages.push({ role, content: h.content });
           }

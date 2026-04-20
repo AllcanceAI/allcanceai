@@ -290,6 +290,7 @@ Campos e Atalhos: {name, idioma, pais, etapa, produto, tamanho, quantidade, fret
           .select('content, is_from_me, created_at, message_id')
           .eq('remote_jid', remoteJid)
           .order('created_at', { ascending: false })
+          .order('id', { ascending: false }) // Garante a ordem exata dentro do mesmo segundo
           .limit(40);
 
         const rawHistory = (historyData || []).reverse();

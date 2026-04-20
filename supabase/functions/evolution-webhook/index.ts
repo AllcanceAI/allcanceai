@@ -42,6 +42,20 @@ serve(async (req) => {
         return new Response("OK", { status: 200 });
       }
 
+      const messageId = msg.key?.id;
+      if (messageId) {
+        const { data: existing } = await supabase
+          .from('wa_messages')
+          .select('id')
+          .eq('message_id', messageId)
+          .maybeSingle();
+        
+        if (existing) {
+          console.log(`🚫 [Deduplicação] Mensagem ${messageId} já processada. Ignorando.`);
+          return new Response("OK", { status: 200 });
+        }
+      }
+
       let remoteJid = msg.key?.remoteJid;
       const isFromMe = msg.key?.fromMe || false;
 

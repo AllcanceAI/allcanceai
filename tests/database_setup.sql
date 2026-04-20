@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS public.wa_messages (
     id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
     instance_name TEXT NOT NULL,
     remote_jid TEXT NOT NULL,
-    message_id TEXT,
+    message_id TEXT UNIQUE,
     push_name TEXT,
     is_from_me BOOLEAN NOT NULL DEFAULT false,
     content TEXT,

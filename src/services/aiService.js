@@ -7,7 +7,7 @@ import { supabase } from '../supabaseClient';
 
 const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
 // MODELO ATUALIZADO (Versão 2026 solicitada pelo usuário)
-const MODEL = "claude-haiku-4-5"; 
+const MODEL = "claude-sonnet-4-5"; 
 
 /**
  * Gera uma resposta para uma mensagem recebida usando Claude (Anthropic).

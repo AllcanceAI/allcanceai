@@ -211,7 +211,7 @@ serve(async (req) => {
         let aiResult = "";
 
         if (messages.length > 0) {
-          console.log(`🧠 [Claude] Chamando modelo claude-haiku-4-5-20251001...`)
+          console.log(`🧠 [Claude] Chamando modelo claude-sonnet-4-5...`)
           
           try {
             const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
@@ -222,7 +222,7 @@ serve(async (req) => {
                 "anthropic-version": "2023-06-01"
               },
               body: JSON.stringify({
-                model: "claude-haiku-4-5-20251001",
+                model: "claude-sonnet-4-5",
                 system: FinalSystemPrompt,
                 messages: messages,
                 max_tokens: 1024

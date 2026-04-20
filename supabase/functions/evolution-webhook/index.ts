@@ -169,7 +169,7 @@ serve(async (req) => {
       if (!isFromMe && finalContent.trim()) {
         console.log("🦾 [IA] Iniciando processamento...")
 
-        // Busca treinamento no banco (Garante pegar a regra mais recente)
+        // Busca treinamento no banco
         const { data: trainingData } = await supabase
           .from('ai_training')
           .select('system_prompt, is_active')
@@ -178,13 +178,15 @@ serve(async (req) => {
           .limit(1)
           .maybeSingle();
 
-        // Se a IA foi desligada explicitamente, respeita
+        console.log(`🤖 [IA Config] Global Active: ${trainingData?.is_active}`);
+
+        // Se a IA foi desligada explicitamente, respeita (trata null como true)
         if (trainingData?.is_active === false) {
           console.log("⏸️ [IA] Desativada Globalmente.");
           return new Response("OK", { status: 200 });
         }
 
-        // Verifica se este chat específico está desativado (com Try/Catch para evitar crash se tabela não existir)
+        // Verifica se este chat específico está desativado
         try {
           const { data: isDisabled } = await supabase
             .from('ai_disabled_chats')
@@ -200,6 +202,8 @@ serve(async (req) => {
         } catch (e) {
           console.warn("⚠️ Tabela ai_disabled_chats não encontrada ou erro na busca. Continuando...");
         }
+
+        console.log("🔥 [IA] Passou nas travas. Chamando Claude...");
 
         const FinalSystemPrompt = trainingData?.system_prompt || "Você é o AllcanceAI, um assistente virtual inteligente. Responda de forma curta e amigável em português.";
 
@@ -257,7 +261,7 @@ serve(async (req) => {
                 "anthropic-version": "2023-06-01"
               },
               body: JSON.stringify({
-                model: "claude-3-5-sonnet-latest",
+                model: "claude-sonnet-4-5",
                 system: FinalSystemPrompt,
                 messages: messages,
                 max_tokens: 1024

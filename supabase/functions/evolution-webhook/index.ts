@@ -69,8 +69,19 @@ serve(async (req) => {
       }
 
       const pushName = msg.pushName || "Contato";
-      const remoteJid = msg.key?.remoteJid;
+      let remoteJid = msg.key?.remoteJid;
       const isFromMe = msg.key?.fromMe || false;
+
+      // Se for sincronia do celular (@lid), tenta descobrir quem é o destinatário real lá dentro
+      if (isFromMe && remoteJid?.includes('@lid')) {
+         const innerMsg = msg.message?.deviceSentMessage?.message;
+         if (innerMsg?.key?.remoteJid) remoteJid = innerMsg.key.remoteJid;
+      }
+      
+      // Converte @lid para @s.whatsapp.net se necessário
+      if (remoteJid && remoteJid.includes('@lid')) {
+        remoteJid = remoteJid.replace('@lid', '@s.whatsapp.net');
+      }
 
       // Extrai a mensagem real (desempacota deviceSentMessage)
       const realMsg = msg.message?.deviceSentMessage?.message 
@@ -311,8 +322,8 @@ Campos e Atalhos: {name, idioma, pais, etapa, produto, tamanho, quantidade, fret
         }
 
         // Certifica que o último é o usuário e remove vazios
-        if (formattedMessages.length > 0 && formattedMessages[formattedMessages.length - 1].role === "assistant") {
-           // Se por acaso terminasse com IA, não teria o que responder
+        if (formattedMessages.length === 0 || formattedMessages[formattedMessages.length - 1].role !== "user") {
+           formattedMessages.push({ role: "user", content: finalContent });
         }
 
         const messages = formattedMessages;
@@ -340,7 +351,7 @@ Campos e Atalhos: {name, idioma, pais, etapa, produto, tamanho, quantidade, fret
                 "anthropic-version": "2023-06-01"
               },
               body: JSON.stringify({
-                model: "claude-sonnet-4-5",
+                model: "claude-3-5-sonnet-20241022",
                 system: FinalSystemPrompt,
                 messages: messages,
                 max_tokens: 1024,

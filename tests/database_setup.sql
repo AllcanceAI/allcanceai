@@ -24,17 +24,20 @@ ALTER TABLE public.wa_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.evolution_webhook_logs ENABLE ROW LEVEL SECURITY;
 
 -- Permitir leitura completa para conexões seguras
+DROP POLICY IF EXISTS "Leitura total das mensagens WA pelo dono" ON public.wa_messages;
 CREATE POLICY "Leitura total das mensagens WA pelo dono" 
 ON public.wa_messages 
 FOR SELECT 
-USING ( true ); -- Como a instância carrega o prefixo de quem enviou, poderíamos refinar a permissão aqui no futuro
+USING ( true ); 
 
 -- Permitir que funções autenticadas (Edge Functions com a chave de Serviço) possam Inserir livremente
+DROP POLICY IF EXISTS "Servicos podem inserir mensagens" ON public.wa_messages;
 CREATE POLICY "Servicos podem inserir mensagens" 
 ON public.wa_messages 
 FOR INSERT 
 WITH CHECK ( true );
 
+DROP POLICY IF EXISTS "Servicos podem inserir logs" ON public.evolution_webhook_logs;
 CREATE POLICY "Servicos podem inserir logs" 
 ON public.evolution_webhook_logs 
 FOR INSERT 
@@ -72,10 +75,12 @@ CREATE TABLE IF NOT EXISTS public.ai_disabled_chats (
 );
 
 ALTER TABLE public.ai_disabled_chats ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Usuário controla chats desativados" ON public.ai_disabled_chats FOR ALL USING (auth.uid() = user_id);
-
 ALTER TABLE public.ai_training ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Usuário controla seus próprios treinamentos" ON public.ai_training;
 CREATE POLICY "Usuário controla seus próprios treinamentos" 
 ON public.ai_training 
 FOR ALL USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Usuário controla chats desativados" ON public.ai_disabled_chats;
+CREATE POLICY "Usuário controla chats desativados" ON public.ai_disabled_chats FOR ALL USING (auth.uid() = user_id);

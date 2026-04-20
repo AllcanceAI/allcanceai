@@ -23,6 +23,14 @@ serve(async (req) => {
     const evoUrl = Deno.env.get('EVOLUTION_URL')
     const evoKey = Deno.env.get('EVOLUTION_GLOBAL_KEY')
     const fullEvoUrl = evoUrl?.includes('http') ? evoUrl : `http://2.24.203.75:8080`;
+    const DEBUG_AI = true;
+
+    const maskSensitive = (text: string) => {
+      if (!text) return "";
+      return text
+        .replace(/\b\d{10,13}\b/g, (m) => m.slice(0, 4) + "****" + m.slice(-4))
+        .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, "email@mascarado.com");
+    };
     
     const supabase = createClient(supabaseUrl, supabaseKey)
 
@@ -204,60 +212,120 @@ serve(async (req) => {
         }
         console.log("🔥 [IA] Passou nas travas. Chamando Claude...");
 
-        const FinalSystemPrompt = trainingData?.system_prompt || "Você é o AllcanceAI, um assistente virtual inteligente. Responda de forma curta e amigável em português.";
+        // --- 1. CARREGA MEMÓRIA DO CONTATO ---
+        let contactMemory = {};
+        try {
+          const { data: memory } = await supabase
+            .from('ai_contact_memory')
+            .select('*')
+            .eq('phone', remoteJid)
+            .maybeSingle();
+          
+          if (memory) {
+            contactMemory = memory;
+          } else {
+            // Cria entrada inicial se não existir
+            await supabase.from('ai_contact_memory').insert({ phone: remoteJid, name: pushName });
+          }
+        } catch (e) {
+          console.warn("⚠️ Erro ao acessar ai_contact_memory:", e.message);
+        }
 
-        // Busca Contexto (500 últimas para memória completa)
+        // --- MONTAGEM DO PROMPT EM 3 CAMADAS ---
+        const FinalSystemPrompt = `
+<PRIORIDADES_DE_EXECUCAO>
+1. NUNCA inventar informações não contidas no treinamento.
+2. Seguir rigorosamente os dados reais da loja.
+3. Manter o fluxo comercial em todas as interações.
+4. Responder de forma natural, curta e humana.
+</PRIORIDADES_DE_EXECUCAO>
+
+<REGRAS_DE_QUALIDADE_E_ELEGANCIA>
+- Máximo de 2 blocos curtos por resposta.
+- Apenas 1 pergunta principal por vez (foco total).
+- CONTRADIÇÃO: Se o cliente mudar de ideia (ex: mudar tamanho ou qtd), priorize a MENSAGEM dele e atualize a memória. NUNCA tente convencê-lo do dado antigo.
+- SAUDAÇÃO: Se o histórico já tem mensagens, NUNCA use "Olá", "Tudo bem" ou saudações iniciais. Vá direto ao ponto.
+- Se o cliente já confirmou (etapa: fechamento), não volte para descobertas, mas responda dúvidas técnicas sem perder o foco do pedido.
+- Se a memória diz que o catálogo ou formulário já foi enviado, não envie novamente a menos que explicitamente solicitado ("manda de novo").
+</REGRAS_DE_QUALIDADE_E_ELEGANCIA>
+
+<SYSTEM_FIXO>
+${trainingData?.system_prompt || "Você é o atendente da Fabricante Primme..."}
+</SYSTEM_FIXO>
+
+<CONTEXTO_DINAMICO_DO_CONTATO>
+- Nome: ${contactMemory.name || 'Não identificado'}
+- Etapa Atual: ${contactMemory.etapa || 'Interesse Inicial'}
+- Produto de Interesse: ${contactMemory.produto_interesse || 'Indefinido'}
+- Tamanho/Grade: ${contactMemory.tamanho || 'Não informado'}
+- Quantidade/Preço: ${contactMemory.quantidade || 'Abaixo do mínimo'} | Total: ${contactMemory.total || '0'}
+- Frete/Logística: ${contactMemory.frete || 'Não calculado'}
+- Objeções Identificadas: ${contactMemory.objecoes || 'Nenhuma'}
+- Catálogo/Formulário: Catálogo (${contactMemory.catalogo_enviado ? 'SIM' : 'NÃO'}) | Form (${contactMemory.formulario_enviado ? 'SIM' : 'NÃO'})
+- RESUMO E PROMESSAS: ${contactMemory.resumo || 'Nova conversa iniciada.'}
+</CONTEXTO_DINAMICO_DO_CONTATO>
+
+REGRA DE ATUALIZAÇÃO (OBRIGATÓRIO):
+Ao final da resposta, use a tag <update_memory> com um JSON. 
+REGRAS DE CONFIANÇA:
+- Só atualize um campo se tiver ABSOLUTA CERTEZA. 
+- Se o dado for ambíguo, omita o campo do JSON para preservar o valor anterior.
+- Se a etapa mudou (ex: de 'negociacao' para 'fechamento'), atualize o campo 'etapa'.
+Campos e Atalhos: {name, idioma, pais, etapa, produto, tamanho, quantidade, frete, total, objecoes, resumo, catalogo_enviado, formulario_enviado, formulario_preenchido}
+        `.trim();
+
+        // Busca Contexto focado (40 mensagens são ideais para manter foco e evitar ruído)
         const { data: historyData } = await supabase
           .from('wa_messages')
           .select('content, is_from_me, created_at, message_id')
           .eq('remote_jid', remoteJid)
           .order('created_at', { ascending: false })
-          .limit(500);
+          .limit(40);
 
-        // Limpa duplicatas e coloca na ordem certa (antiga para nova)
-        const seenIds = new Set();
-        const rawHistory = (historyData || [])
-          .filter(m => {
-             if (!m.message_id) return true; // Permite se não tiver ID (mensagens antigas)
-             if (seenIds.has(m.message_id)) return false;
-             seenIds.add(m.message_id);
-             return true;
-          })
-          .reverse();
-
-        console.log(`🤖 [IA Config] Global Active: ${trainingData?.is_active}`);
+        const rawHistory = (historyData || []).reverse();
+        const seenIds = new Set(rawHistory.map(m => m.message_id).filter(Boolean));
 
         const formattedMessages: { role: "user" | "assistant", content: string }[] = [];
         
-        // Normaliza o histórico: Garante alternância e remove duplicatas
+        // Se o primeiro do histórico for Assistant, garantimos um contexto para a Claude não falhar
+        if (rawHistory.length > 0 && rawHistory[0].is_from_me) {
+           formattedMessages.push({ role: "user", content: "Olá!" }); // Placeholder inicial natural
+        }
+
+        // Montagem do histórico com agrupamento de bolhas
         for (const h of rawHistory) {
           const role = h.is_from_me ? "assistant" : "user";
           if (formattedMessages.length > 0 && formattedMessages[formattedMessages.length - 1].role === role) {
-            // Bolhas seguidas do mesmo autor separadas por quebra de linha simples
             formattedMessages[formattedMessages.length - 1].content += "\n" + h.content;
           } else {
             formattedMessages.push({ role, content: h.content });
           }
         }
 
-        // Adiciona a mensagem atual se ela não estiver na lista (Segurança de Tempo Real)
+        // Adiciona a mensagem atual (se já não estiver lá)
         if (!seenIds.has(messageId)) {
-          console.log(`📌 [IA Context] Adicionando mensagem atual manualmente: ${messageId}`);
           if (formattedMessages.length > 0 && formattedMessages[formattedMessages.length - 1].role === "user") {
             formattedMessages[formattedMessages.length - 1].content += "\n" + finalContent;
           } else {
             formattedMessages.push({ role: "user", content: finalContent });
           }
-        } else {
-          console.log(`📌 [IA Context] Mensagem atual já estava no histórico do banco.`);
         }
 
-        // REGRA DE OURO: Claude exige começar com 'user'
-        while (formattedMessages.length > 0 && formattedMessages[0].role !== "user") {
-          formattedMessages.shift();
+        // Certifica que o último é o usuário e remove vazios
+        if (formattedMessages.length > 0 && formattedMessages[formattedMessages.length - 1].role === "assistant") {
+           // Se por acaso terminasse com IA, não teria o que responder
         }
 
         const messages = formattedMessages;
+
+        if (DEBUG_AI) {
+           console.log(`\n--- 🛡️ AI AUDIT TRACE [${remoteJid}] ---`);
+           console.log(`📍 Etapa: ${contactMemory.etapa}`);
+           console.log(`📚 Histórico Enviado: ${messages.length} mensagens reduzidas`);
+           console.log(`🧠 Memória Dinâmica:\n${maskSensitive(JSON.stringify(contactMemory, null, 2))}`);
+           console.log(`📝 Payload Final (Preview):\n${maskSensitive(FinalSystemPrompt.slice(0, 300))}...`);
+           console.log("------------------------------------------\n");
+        }
 
         let aiResult = "";
 
@@ -276,7 +344,8 @@ serve(async (req) => {
                 model: "claude-sonnet-4-5",
                 system: FinalSystemPrompt,
                 messages: messages,
-                max_tokens: 1024
+                max_tokens: 1024,
+                temperature: 0.3
               })
             });
 
@@ -285,7 +354,110 @@ serve(async (req) => {
               console.error(`❌ Erro Claude API (${claudeRes.status}):`, errBody);
             } else {
               const cData = await claudeRes.json();
-              aiResult = cData.content?.[0]?.text || "";
+              aiResult = cData.content[0].text;
+
+            // --- 4. VALIDAÇÃO DE QUALIDADE (GUARD) ---
+            if (!aiResult || aiResult.length < 2) return new Response("OK", { status: 200 });
+
+            // Truncamento Inteligente (Melhoria de Elegância)
+            const truncateSmart = (text: string, limit: number = 1000) => {
+               if (text.length <= limit) return text;
+               const sub = text.slice(0, limit);
+               const lastNewline = sub.lastIndexOf('\n');
+               const lastPeriod = sub.lastIndexOf('.');
+               let cutIdx = (lastNewline > limit * 0.7) ? lastNewline : lastPeriod;
+               if (cutIdx <= 0) cutIdx = limit;
+               // Proteção básica para não cortar links ao meio
+               const remaining = text.slice(cutIdx);
+               if (remaining.startsWith("http") || remaining.startsWith("www")) {
+                  const firstSpace = remaining.indexOf(" ");
+                  if (firstSpace !== -1) cutIdx += firstSpace;
+               }
+               return text.slice(0, cutIdx).trim() + "...";
+            };
+
+            if (aiResult.length > 1200) {
+               console.warn("⚠️ Resposta muito longa detectada. Truncando inteligentemente...");
+               aiResult = truncateSmart(aiResult, 1000);
+            }
+
+            // Impede reenvio de formulário desnecessário
+            if (contactMemory.formulario_enviado && (aiResult.includes("formulário") || aiResult.includes("forms.gle"))) {
+               const lowerMsg = aiResult.toLowerCase();
+               if (!lowerMsg.includes("pediu") && !lowerMsg.includes("manda de novo")) {
+                  console.warn("⚠️ IA tentou reenviar formulário já enviado. Limpando menção redundante.");
+                  aiResult = aiResult.replace(/.*(Link do formulário|preencha aqui|https:\/\/forms).*/gi, "Já te mandei o link ali em cima, qualquer dúvida me avisa!");
+               }
+            }
+
+            // --- 5. ATUALIZA MEMÓRIA E LIMPA RESPOSTA ---
+            const allMemoryMatches = [...aiResult.matchAll(/<update_memory>([\s\S]*?)<\/update_memory>/g)];
+            if (allMemoryMatches.length > 0) {
+              const lastMatch = allMemoryMatches[allMemoryMatches.length - 1];
+              try {
+                const updates = JSON.parse(lastMatch[1].trim());
+                
+                // --- HARDENING: Proteção de Sobrescrita e Regressão ---
+                const dbUpdates: any = { last_interaction_at: new Date().toISOString() };
+                
+                // --- VALIDAÇÃO E COERÇÃO DE TIPOS ---
+                const toNum = (val: any) => {
+                   if (val === undefined || val === null || val === "") return null;
+                   const n = Number(String(val).replace(/[^\d.-]/g, ''));
+                   return isNaN(n) ? null : String(n); // Mantemos como String no DB mas validamos número
+                };
+
+                const toBool = (val: any) => {
+                   if (typeof val === 'boolean') return val;
+                   if (val === 'true' || val === 1 || val === "1") return true;
+                   if (val === 'false' || val === 0 || val === "0") return false;
+                   return null;
+                };
+
+                if (updates.name) safeUpdate('name', String(updates.name).slice(0, 100));
+                if (updates.idioma) safeUpdate('idioma', String(updates.idioma).slice(0, 20));
+                if (updates.pais) safeUpdate('pais', String(updates.pais).slice(0, 30));
+                
+                // Proteção de Etapa: Transição Linear (1 por 1)
+                if (updates.etapa) {
+                   const stages = ['interesse_inicial', 'descoberta', 'negociacao', 'fechamento', 'finalizado'];
+                   const currentIdx = stages.indexOf(contactMemory.etapa || 'interesse_inicial');
+                   const newIdx = stages.indexOf(updates.etapa);
+                   
+                   if (newIdx === currentIdx + 1 || newIdx === currentIdx) {
+                      safeUpdate('etapa', updates.etapa);
+                   } else if (newIdx > currentIdx + 1) {
+                      console.warn(`🛡️ Hardening: Bloqueado SALTO de etapa de ${contactMemory.etapa} para ${updates.etapa}`);
+                   } else if (newIdx < currentIdx) {
+                      safeUpdate('etapa', updates.etapa);
+                   }
+                }
+
+                if (updates.produto) safeUpdate('produto_interesse', String(updates.produto));
+                if (updates.tamanho) safeUpdate('tamanho', String(updates.tamanho).toUpperCase());
+                if (updates.quantidade) safeUpdate('quantidade', toNum(updates.quantidade));
+                if (updates.frete) safeUpdate('frete', toNum(updates.frete));
+                if (updates.total) safeUpdate('total', toNum(updates.total));
+                if (updates.objecoes) safeUpdate('objecoes', String(updates.objecoes));
+                if (updates.resumo) safeUpdate('resumo', String(updates.resumo));
+                
+                if (updates.catalogo_enviado !== undefined) safeUpdate('catalogo_enviado', toBool(updates.catalogo_enviado));
+                if (updates.formulario_enviado !== undefined) safeUpdate('formulario_enviado', toBool(updates.formulario_enviado));
+                if (updates.formulario_preenchido !== undefined) safeUpdate('formulario_preenchido', toBool(updates.formulario_preenchido));
+                
+                if (Object.keys(dbUpdates).length > 1) { // Só faz update se houver algo além do last_interaction
+                   await supabase.from('ai_contact_memory').update(dbUpdates).eq('phone', remoteJid);
+                }
+                if (DEBUG_AI) {
+                   console.log("✅ Memória do contato atualizada.");
+                   console.log(`📦 Payload de Memória Atualizado: ${JSON.stringify(updates)}`);
+                }
+              } catch (e) {
+                console.error("❌ Erro ao processar <update_memory>:", e.message);
+              }
+              // Remove a tag da resposta que vai para o WhatsApp
+              aiResult = aiResult.replace(/<update_memory>[\s\S]*?<\/update_memory>/g, "").trim();
+            }
             }
           } catch (e) {
             console.error("🚨 Erro de Rede Claude:", e.message);
